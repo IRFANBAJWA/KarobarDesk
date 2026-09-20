@@ -1,0 +1,34 @@
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karobardesk_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    command: >
+      sh -c "chmod -R 777 storage bootstrap/cache &&
+      apache2-foreground"
+
+  db:
+    image: mysql:8.4
+    container_name: karobardesk_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: karobardesk
+      MYSQL_USER: karobardesk
+      MYSQL_PASSWORD: karobardesk
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - karobardesk_mysql:/var/lib/mysql
+
+volumes:
+  karobardesk_mysql:
