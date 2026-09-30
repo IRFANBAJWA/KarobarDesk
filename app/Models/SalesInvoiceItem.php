@@ -10,21 +10,23 @@ class SalesInvoiceItem extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'sales_invoice_id',
         'item_id',
+        'line_number',
         'item_code',
         'item_name',
+        'uom',
         'qty',
+        'free_qty',
+        'return_qty',
         'unit_price',
         'sale_price',
+        'cost_price',
         'line_discount',
-        'line_total',
+        'line_discount_percent',
+        'tax_rate',
+        'is_returned',
         'is_b',
         'is_set',
         'is_b_reason',
@@ -33,21 +35,22 @@ class SalesInvoiceItem extends Model
         'remarks',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'qty'           => 'decimal:3',
-            'unit_price'    => 'decimal:2',
-            'sale_price'    => 'decimal:2',
-            'line_discount' => 'decimal:2',
-            'line_total'    => 'decimal:2',
-            'is_b'          => 'boolean',
-            'is_set'        => 'boolean',
+            'line_number'           => 'integer',
+            'qty'                   => 'decimal:3',
+            'free_qty'              => 'decimal:3',
+            'return_qty'            => 'decimal:3',
+            'unit_price'            => 'decimal:2',
+            'sale_price'            => 'decimal:2',
+            'cost_price'            => 'decimal:2',
+            'line_discount'         => 'decimal:2',
+            'line_discount_percent' => 'decimal:2',
+            'tax_rate'              => 'decimal:2',
+            'is_returned'           => 'boolean',
+            'is_b'                  => 'boolean',
+            'is_set'                => 'boolean',
         ];
     }
 
@@ -55,18 +58,11 @@ class SalesInvoiceItem extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Parent sales invoice (sale or return).
-     */
     public function salesInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class);
     }
 
-    /**
-     * Item reference. Nullable in practice — snapshot fields preserve truth
-     * even if the item mirror shifts.
-     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
@@ -101,6 +97,11 @@ class SalesInvoiceItem extends Model
         return $query->where('is_set', true);
     }
 
+    public function scopeReturned($query)
+    {
+        return $query->where('is_returned', true);
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -113,5 +114,15 @@ class SalesInvoiceItem extends Model
     public function isSet(): bool
     {
         return (bool) $this->is_set;
+    }
+
+    public function isReturned(): bool
+    {
+        return (bool) $this->is_returned;
+    }
+
+    public function lineTotal(): float
+    {
+        return (float) $this->qty * (float) $this->sale_price - (float) $this->line_discount;
     }
 }

@@ -10,11 +10,6 @@ class StockLedger extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'warehouse',
@@ -23,15 +18,10 @@ class StockLedger extends Model
         'balance_after',
         'reference_type',
         'reference_id',
-        'user_id',
-        'remarks',
+        'notes',
+        'created_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -42,7 +32,6 @@ class StockLedger extends Model
 
     /**
      * Stock ledger is append-only (Section 20).
-     * No updates, no deletes. Enforced via model observer.
      */
     protected static function booted(): void
     {
@@ -69,9 +58,9 @@ class StockLedger extends Model
         return $this->belongsTo(Item::class);
     }
 
-    public function user(): BelongsTo
+    public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /*
@@ -83,8 +72,6 @@ class StockLedger extends Model
      * No `reference()` relationship is defined here by design.
      * If polymorphic eager-loading is needed later, register a morph map
      * in AppServiceProvider::boot() and add a `reference()` morphTo method.
-     * Until then, use the scopes below to query by type + id, then load the
-     * related record explicitly.
      */
 
     // ---------------------------------------------------------------------
@@ -116,10 +103,6 @@ class StockLedger extends Model
         return $query->where('reference_id', $referenceId);
     }
 
-    /**
-     * Match a reference pair.
-     * Usage: StockLedger::forReference('sale', 123)->get();
-     */
     public function scopeForReference($query, string $referenceType, int $referenceId)
     {
         return $query->where('reference_type', $referenceType)

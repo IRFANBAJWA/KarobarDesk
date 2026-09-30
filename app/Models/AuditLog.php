@@ -10,16 +10,8 @@ class AuditLog extends Model
 {
     use HasFactory;
 
-    /**
-     * Audit logs are created only — never updated (Section 32).
-     */
-    public const UPDATED_AT = null;
+    protected $table = 'audit_logs';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'user_id',
@@ -33,11 +25,6 @@ class AuditLog extends Model
         'user_agent',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -63,10 +50,6 @@ class AuditLog extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company scope. Nullable — some audit events are global
-     * (e.g. Super Admin actions, login failures).
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -131,11 +114,6 @@ class AuditLog extends Model
     // Helpers
     // ---------------------------------------------------------------------
 
-    /**
-     * Decode old_values into an array. Returns null if not present.
-     * Stored as text per Section 32, decoded manually to honor "no JSON
-     * for structured data" while still allowing diff inspection.
-     */
     public function oldValues(): ?array
     {
         return $this->decodeText($this->old_values);

@@ -10,24 +10,16 @@ class StockAuditVerification extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'stock_audit_verifications';
+
     protected $fillable = [
         'stock_audit_id',
-        'user_id',
-        'status',
-        'remarks',
+        'verified_by',
+        'verification_status',
+        'verification_notes',
         'verified_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -63,9 +55,9 @@ class StockAuditVerification extends Model
         return $this->belongsTo(StockAudit::class);
     }
 
-    public function user(): BelongsTo
+    public function verifiedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     // ---------------------------------------------------------------------
@@ -79,22 +71,22 @@ class StockAuditVerification extends Model
 
     public function scopeForUser($query, int $userId)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('verified_by', $userId);
     }
 
     public function scopeStatus($query, string $status)
     {
-        return $query->where('status', $status);
+        return $query->where('verification_status', $status);
     }
 
     public function scopeVerified($query)
     {
-        return $query->where('status', 'verified');
+        return $query->where('verification_status', 'verified');
     }
 
     public function scopeRejected($query)
     {
-        return $query->where('status', 'rejected');
+        return $query->where('verification_status', 'rejected');
     }
 
     // ---------------------------------------------------------------------
@@ -103,11 +95,11 @@ class StockAuditVerification extends Model
 
     public function isVerified(): bool
     {
-        return $this->status === 'verified';
+        return $this->verification_status === 'verified';
     }
 
     public function isRejected(): bool
     {
-        return $this->status === 'rejected';
+        return $this->verification_status === 'rejected';
     }
 }

@@ -11,32 +11,32 @@ class SalesInvoice extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
+        'till_operation_id',
         'user_id',
         'customer_id',
         'client_request_id',
         'invoice_number',
         'invoice_type',
+        'status',
+        'erpnext_status',
+        'erpnext_invoice_reference',
+        'original_invoice_id',
         'invoice_date',
         'invoice_time',
         'working_date',
-        'status',
+        'due_date',
         'subtotal',
-        'discount_total',
-        'tax_total',
+        'discount_amount',
+        'discount_percentage',
+        'tax_amount',
+        'shipping_amount',
+        'rounding_adjustment',
         'grand_total',
-        'paid_total',
-        'balance_due',
-        'erpnext_status',
-        'erpnext_invoice_reference',
-        'pos_sync_status',
-        'pos_erpnext_sync_status',
+        'total_paid',
+        'discount_reason',
+        'item_count',
         'is_void',
         'void_reason',
         'void_by',
@@ -45,32 +45,35 @@ class SalesInvoice extends Model
         'cancelled_by',
         'cancel_reason',
         'return_reason',
-        'original_invoice_id',
         'source_rejected_sale_id',
+        'sync_status',
+        'sync_error',
+        'sync_attempts',
+        'pos_sync_status',
+        'pos_erpnext_sync_status',
         'fbr_invoice_reference',
-        'payload_hash',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'invoice_date'   => 'date',
-            'invoice_time'   => 'datetime:H:i:s',
-            'working_date'   => 'date',
-            'subtotal'       => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'tax_total'      => 'decimal:2',
-            'grand_total'    => 'decimal:2',
-            'paid_total'     => 'decimal:2',
-            'balance_due'    => 'decimal:2',
-            'is_void'        => 'boolean',
-            'void_time'      => 'datetime',
-            'cancelled_at'   => 'datetime',
+            'invoice_date'        => 'date',
+            'invoice_time'        => 'datetime:H:i:s',
+            'working_date'        => 'date',
+            'due_date'            => 'date',
+            'subtotal'            => 'decimal:2',
+            'discount_amount'     => 'decimal:2',
+            'discount_percentage' => 'decimal:2',
+            'tax_amount'          => 'decimal:2',
+            'shipping_amount'     => 'decimal:2',
+            'rounding_adjustment' => 'decimal:2',
+            'grand_total'         => 'decimal:2',
+            'total_paid'          => 'decimal:2',
+            'item_count'          => 'integer',
+            'sync_attempts'       => 'integer',
+            'is_void'             => 'boolean',
+            'void_time'           => 'datetime',
+            'cancelled_at'        => 'datetime',
         ];
     }
 
@@ -81,6 +84,11 @@ class SalesInvoice extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function tillOperation(): BelongsTo
+    {
+        return $this->belongsTo(TillOperation::class);
     }
 
     public function user(): BelongsTo
@@ -103,25 +111,16 @@ class SalesInvoice extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
-    /**
-     * For returns: the original sale invoice being returned against.
-     */
     public function originalInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class, 'original_invoice_id');
     }
 
-    /**
-     * For sales: returns issued against this invoice.
-     */
     public function returns(): HasMany
     {
         return $this->hasMany(SalesInvoice::class, 'original_invoice_id');
     }
 
-    /**
-     * If this sale originated from an approved rejected sale.
-     */
     public function sourceRejectedSale(): BelongsTo
     {
         return $this->belongsTo(RejectedSale::class, 'source_rejected_sale_id');
@@ -206,6 +205,11 @@ class SalesInvoice extends Model
         return $query->whereBetween('working_date', [$from, $to]);
     }
 
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -233,6 +237,11 @@ class SalesInvoice extends Model
     public function isPaid(): bool
     {
         return $this->status === 'paid';
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
     }
 
     public function isFullySyncedToErpnext(): bool

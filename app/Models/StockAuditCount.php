@@ -10,47 +10,40 @@ class StockAuditCount extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'stock_audit_counts';
+
     protected $fillable = [
-        'stock_audit_id',
         'stock_audit_item_id',
         'user_id',
-        'counted_qty',
+        'role_area',
+        'physical_qty',
         'remarks',
-        'counted_at',
+        'entered_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'counted_qty' => 'decimal:3',
-            'counted_at'  => 'datetime',
+            'physical_qty' => 'decimal:3',
+            'entered_at'   => 'datetime',
         ];
     }
 
     /**
      * Immutability enforcement (Section 22):
      * once the parent audit is finalized, no updates and no deletes.
+     * Parent audit resolved via stockAuditItem.
      */
     protected static function booted(): void
     {
         static::updating(function (StockAuditCount $count) {
-            if ($count->stockAudit?->isFinalized()) {
+            if ($count->stockAuditItem?->stockAudit?->isFinalized()) {
                 throw new \RuntimeException('StockAuditCount is immutable after parent audit finalization. Update is not allowed.');
             }
         });
 
         static::deleting(function (StockAuditCount $count) {
-            if ($count->stockAudit?->isFinalized()) {
+            if ($count->stockAuditItem?->stockAudit?->isFinalized()) {
                 throw new \RuntimeException('StockAuditCount is immutable after parent audit finalization. Delete is not allowed.');
             }
         });
@@ -59,11 +52,6 @@ class StockAuditCount extends Model
     // ---------------------------------------------------------------------
     // Relationships
     // ---------------------------------------------------------------------
-
-    public function stockAudit(): BelongsTo
-    {
-        return $this->belongsTo(StockAudit::class);
-    }
 
     public function stockAuditItem(): BelongsTo
     {
@@ -78,11 +66,6 @@ class StockAuditCount extends Model
     // ---------------------------------------------------------------------
     // Scopes
     // ---------------------------------------------------------------------
-
-    public function scopeForAudit($query, int $stockAuditId)
-    {
-        return $query->where('stock_audit_id', $stockAuditId);
-    }
 
     public function scopeForAuditItem($query, int $stockAuditItemId)
     {
@@ -100,9 +83,19 @@ class StockAuditCount extends Model
             ->where('user_id', $userId);
     }
 
-    public function scopeBetween($query, $from, $to)
+    public function scopeRoleArea($query, string $roleArea)
     {
-        return $query->whereBetween('counted_at', [$from, $to]);
+        return $query->where('role_area', $roleArea);
+    }
+
+    public function scopeShop($query)
+    {
+        return $query->where('role_area', 'shop');
+    }
+
+    public function scopeOnline($query)
+    {
+        return $query->where('role_area', 'online');
     }
 
     // ---------------------------------------------------------------------
@@ -111,6 +104,6 @@ class StockAuditCount extends Model
 
     public function isZero(): bool
     {
-        return (float) $this->counted_qty === 0.0;
+        return (float) $this->physical_qty === 0.0;
     }
 }

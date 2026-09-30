@@ -10,44 +10,36 @@ class ParcelSettlement extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'company_id',
         'parcel_id',
-        'parcel_settlement_import_id',
+        'company_id',
+        'courier_account_id',
         'cn_number',
         'settlement_date',
-        'gross_amount',
-        'deduction_amount',
-        'net_amount',
         'cod_amount',
-        'service_charges',
-        'gst_amount',
-        'payment_status',
-        'payment_reference',
+        'courier_charge',
+        'courier_gst',
+        'courier_total',
+        'debit',
+        'net_payable',
+        'tracking',
+        'payment_id',
+        'instrument_mode',
+        'instrument_number',
         'source',
-        'remarks',
+        'raw_data',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'settlement_date'   => 'date',
-            'gross_amount'      => 'decimal:2',
-            'deduction_amount'  => 'decimal:2',
-            'net_amount'        => 'decimal:2',
-            'cod_amount'        => 'decimal:2',
-            'service_charges'   => 'decimal:2',
-            'gst_amount'        => 'decimal:2',
+            'settlement_date' => 'date',
+            'cod_amount'      => 'decimal:2',
+            'courier_charge'  => 'decimal:2',
+            'courier_gst'     => 'decimal:2',
+            'courier_total'   => 'decimal:2',
+            'debit'           => 'decimal:2',
+            'net_payable'     => 'decimal:2',
         ];
     }
 
@@ -55,26 +47,19 @@ class ParcelSettlement extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
-    }
-
-    /**
-     * Parcel this settlement applies to. Nullable — a settlement row can be
-     * imported before the parcel is matched.
-     */
     public function parcel(): BelongsTo
     {
         return $this->belongsTo(Parcel::class);
     }
 
-    /**
-     * Batch import this settlement row was part of.
-     */
-    public function import(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(ParcelSettlementImport::class, 'parcel_settlement_import_id');
+        return $this->belongsTo(Company::class);
+    }
+
+    public function courierAccount(): BelongsTo
+    {
+        return $this->belongsTo(CourierAccount::class);
     }
 
     // ---------------------------------------------------------------------
@@ -89,6 +74,11 @@ class ParcelSettlement extends Model
     public function scopeForParcel($query, int $parcelId)
     {
         return $query->where('parcel_id', $parcelId);
+    }
+
+    public function scopeForAccount($query, int $courierAccountId)
+    {
+        return $query->where('courier_account_id', $courierAccountId);
     }
 
     public function scopeByCn($query, string $cnNumber)
@@ -106,21 +96,6 @@ class ParcelSettlement extends Model
         return $query->whereBetween('settlement_date', [$from, $to]);
     }
 
-    public function scopePaymentStatus($query, string $paymentStatus)
-    {
-        return $query->where('payment_status', $paymentStatus);
-    }
-
-    public function scopePaid($query)
-    {
-        return $query->where('payment_status', 'paid');
-    }
-
-    public function scopePending($query)
-    {
-        return $query->where('payment_status', 'pending');
-    }
-
     public function scopeSource($query, string $source)
     {
         return $query->where('source', $source);
@@ -130,13 +105,8 @@ class ParcelSettlement extends Model
     // Helpers
     // ---------------------------------------------------------------------
 
-    public function isPaid(): bool
+    public function isPositiveNet(): bool
     {
-        return $this->payment_status === 'paid';
-    }
-
-    public function isPending(): bool
-    {
-        return $this->payment_status === 'pending';
+        return (float) $this->net_payable > 0;
     }
 }

@@ -10,41 +10,42 @@ class Customer extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'erpnext_customer',
         'customer_name',
-        'customer_group',
-        'territory',
-        'mobile_no',
+        'customer_type',
         'phone',
         'email',
-        'address_line1',
-        'address_line2',
+        'address',
         'city',
-        'loyalty_program',
+        'country',
+        'credit_limit',
+        'current_balance',
+        'tax_number',
+        'loyalty_card_number',
+        'loyalty_member',
+        'special_discount',
         'loyalty_points',
+        'loyalty_program',
+        'loyalty_expiry',
         'is_active',
-        'is_disabled',
-        'synced_at',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'loyalty_points' => 'integer',
-            'is_active'      => 'boolean',
-            'is_disabled'    => 'boolean',
-            'synced_at'      => 'datetime',
+            'credit_limit'        => 'decimal:2',
+            'current_balance'     => 'decimal:2',
+            'special_discount'    => 'decimal:2',
+            'loyalty_points'      => 'integer',
+            'loyalty_member'      => 'boolean',
+            'loyalty_expiry'      => 'date',
+            'is_active'           => 'boolean',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
         ];
     }
 
@@ -52,12 +53,14 @@ class Customer extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Sales invoices issued to this customer.
-     */
     public function salesInvoices(): HasMany
     {
         return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function rejectedSales(): HasMany
+    {
+        return $this->hasMany(RejectedSale::class);
     }
 
     // ---------------------------------------------------------------------
@@ -66,13 +69,17 @@ class Customer extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true)
-            ->where('is_disabled', false);
+        return $query->where('is_active', true);
     }
 
     public function scopeByErpnextName($query, string $erpnextCustomer)
     {
         return $query->where('erpnext_customer', $erpnextCustomer);
+    }
+
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
     }
 
     // ---------------------------------------------------------------------
@@ -81,6 +88,11 @@ class Customer extends Model
 
     public function isActive(): bool
     {
-        return (bool) $this->is_active && ! (bool) $this->is_disabled;
+        return (bool) $this->is_active;
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
     }
 }

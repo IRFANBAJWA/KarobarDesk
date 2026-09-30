@@ -10,25 +10,13 @@ class CourierPartner extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'code',
         'name',
-        'display_name',
-        'base_url',
-        'tracking_url',
+        'code',
+        'api_base_url',
         'is_active',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -40,10 +28,6 @@ class CourierPartner extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Courier accounts belonging to this partner.
-     * Each company has its own account with the partner.
-     */
     public function accounts(): HasMany
     {
         return $this->hasMany(CourierAccount::class);

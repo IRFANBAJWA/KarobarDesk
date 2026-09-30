@@ -11,11 +11,6 @@ class JournalEntry extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'user_id',
@@ -30,21 +25,16 @@ class JournalEntry extends Model
         'erpnext_jv_status',
         'sync_status',
         'sync_error',
-        'synced_at',
+        'sync_attempts',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'posting_date' => 'date',
-            'total_debit'  => 'decimal:2',
-            'total_credit' => 'decimal:2',
-            'synced_at'    => 'datetime',
+            'posting_date'  => 'date',
+            'total_debit'   => 'decimal:2',
+            'total_credit'  => 'decimal:2',
+            'sync_attempts' => 'integer',
         ];
     }
 
@@ -62,9 +52,6 @@ class JournalEntry extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Debit/credit lines for this journal entry.
-     */
     public function accounts(): HasMany
     {
         return $this->hasMany(JournalEntryAccount::class);

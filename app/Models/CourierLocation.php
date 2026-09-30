@@ -10,30 +10,18 @@ class CourierLocation extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'courier_account_id',
         'location_id',
         'location_name',
         'location_address',
-        'is_active',
-        'synced_at',
+        'is_default',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
-            'synced_at' => 'datetime',
+            'is_default' => 'boolean',
         ];
     }
 
@@ -41,9 +29,6 @@ class CourierLocation extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Courier account this location belongs to.
-     */
     public function courierAccount(): BelongsTo
     {
         return $this->belongsTo(CourierAccount::class);
@@ -63,17 +48,17 @@ class CourierLocation extends Model
         return $query->where('location_id', $locationId);
     }
 
-    public function scopeActive($query)
+    public function scopeDefault($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('is_default', true);
     }
 
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
 
-    public function isActive(): bool
+    public function isDefault(): bool
     {
-        return (bool) $this->is_active;
+        return (bool) $this->is_default;
     }
 }

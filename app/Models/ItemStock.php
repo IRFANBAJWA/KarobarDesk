@@ -10,24 +10,13 @@ class ItemStock extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'warehouse',
         'item_id',
         'qty',
-        'updated_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -39,29 +28,14 @@ class ItemStock extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company this stock row belongs to.
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
 
-    /**
-     * Item this stock row tracks.
-     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
-    }
-
-    /**
-     * User who last touched this stock row.
-     * Optional — null when updated by system/sync.
-     */
-    public function updatedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
     }
 
     // ---------------------------------------------------------------------
@@ -83,10 +57,6 @@ class ItemStock extends Model
         return $query->where('item_id', $itemId);
     }
 
-    /**
-     * Match a specific company + warehouse + item triple.
-     * Usage: ItemStock::for(1, 'Main', 42)->first();
-     */
     public function scopeFor($query, int $companyId, string $warehouse, int $itemId)
     {
         return $query->where('company_id', $companyId)

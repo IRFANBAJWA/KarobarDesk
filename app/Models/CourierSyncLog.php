@@ -10,36 +10,24 @@ class CourierSyncLog extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'courier_account_id',
-        'user_id',
+        'parcel_id',
         'operation',
         'endpoint',
+        'request_reference',
+        'response_reference',
         'order_reference_id',
         'status',
-        'http_status',
-        'request_payload',
-        'response_payload',
-        'error_message',
-        'duration_ms',
+        'error',
+        'retry_count',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'http_status' => 'integer',
-            'duration_ms' => 'integer',
+            'retry_count' => 'integer',
         ];
     }
 
@@ -47,10 +35,6 @@ class CourierSyncLog extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company this log entry belongs to. Nullable for system-level ops
-     * (e.g. city catalog refresh that isn't company-scoped).
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -61,18 +45,9 @@ class CourierSyncLog extends Model
         return $this->belongsTo(CourierAccount::class);
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Parcel this log references, matched by CN (order_reference_id).
-     * Nullable — some operations (city/location sync) have no parcel.
-     */
     public function parcel(): BelongsTo
     {
-        return $this->belongsTo(Parcel::class, 'order_reference_id', 'cn_number');
+        return $this->belongsTo(Parcel::class);
     }
 
     // ---------------------------------------------------------------------
@@ -87,6 +62,11 @@ class CourierSyncLog extends Model
     public function scopeForAccount($query, int $courierAccountId)
     {
         return $query->where('courier_account_id', $courierAccountId);
+    }
+
+    public function scopeForParcel($query, int $parcelId)
+    {
+        return $query->where('parcel_id', $parcelId);
     }
 
     public function scopeOperation($query, string $operation)

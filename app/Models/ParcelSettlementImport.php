@@ -5,52 +5,38 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ParcelSettlementImport extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'courier_account_id',
-        'user_id',
-        'batch_reference',
         'source',
-        'file_name',
+        'file_path',
+        'file_format',
         'period_from',
         'period_to',
-        'total_rows',
-        'imported_rows',
-        'skipped_rows',
-        'failed_rows',
+        'rows_received',
+        'rows_inserted',
+        'rows_updated',
+        'rows_unmatched',
         'status',
-        'error_message',
-        'started_at',
-        'completed_at',
+        'error',
+        'triggered_by',
+        'imported_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'period_from'  => 'date',
-            'period_to'    => 'date',
-            'total_rows'   => 'integer',
-            'imported_rows' => 'integer',
-            'skipped_rows' => 'integer',
-            'failed_rows'  => 'integer',
-            'started_at'   => 'datetime',
-            'completed_at' => 'datetime',
+            'period_from'    => 'date',
+            'period_to'      => 'date',
+            'rows_received'  => 'integer',
+            'rows_inserted'  => 'integer',
+            'rows_updated'   => 'integer',
+            'rows_unmatched' => 'integer',
         ];
     }
 
@@ -68,17 +54,14 @@ class ParcelSettlementImport extends Model
         return $this->belongsTo(CourierAccount::class);
     }
 
-    public function user(): BelongsTo
+    public function triggeredBy(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'triggered_by');
     }
 
-    /**
-     * Settlement rows created by this import.
-     */
-    public function settlements(): HasMany
+    public function importedBy(): BelongsTo
     {
-        return $this->hasMany(ParcelSettlement::class, 'parcel_settlement_import_id');
+        return $this->belongsTo(User::class, 'imported_by');
     }
 
     // ---------------------------------------------------------------------
@@ -125,11 +108,6 @@ class ParcelSettlementImport extends Model
         return $query->where('source', $source);
     }
 
-    public function scopeByBatchReference($query, string $batchReference)
-    {
-        return $query->where('batch_reference', $batchReference);
-    }
-
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -156,6 +134,6 @@ class ParcelSettlementImport extends Model
 
     public function hasErrors(): bool
     {
-        return (int) $this->failed_rows > 0;
+        return (int) $this->rows_unmatched > 0;
     }
 }

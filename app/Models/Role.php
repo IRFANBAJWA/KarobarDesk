@@ -11,27 +11,21 @@ class Role extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
-        'display_name',
+        'label',
         'description',
         'is_system',
+        'is_super_admin',
+        'is_active',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'is_system' => 'boolean',
+            'is_system'      => 'boolean',
+            'is_super_admin' => 'boolean',
+            'is_active'      => 'boolean',
         ];
     }
 
@@ -39,27 +33,18 @@ class Role extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Users holding this role.
-     */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_roles')
             ->withTimestamps();
     }
 
-    /**
-     * Permissions granted to this role.
-     */
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions')
             ->withTimestamps();
     }
 
-    /**
-     * Field-level permissions configured for this role.
-     */
     public function fieldPermissions(): HasMany
     {
         return $this->hasMany(FieldPermission::class);
@@ -72,6 +57,16 @@ class Role extends Model
     public function scopeSystem($query)
     {
         return $query->where('is_system', true);
+    }
+
+    public function scopeSuperAdmin($query)
+    {
+        return $query->where('is_super_admin', true);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function scopeByName($query, string $name)
@@ -88,10 +83,16 @@ class Role extends Model
         return (bool) $this->is_system;
     }
 
-    /**
-     * Whether this role grants a module + action permission.
-     * Note: this checks the role itself, not the current user.
-     */
+    public function isSuperAdmin(): bool
+    {
+        return (bool) $this->is_super_admin;
+    }
+
+    public function isActive(): bool
+    {
+        return (bool) $this->is_active;
+    }
+
     public function hasPermission(string $module, string $action): bool
     {
         return $this->permissions()

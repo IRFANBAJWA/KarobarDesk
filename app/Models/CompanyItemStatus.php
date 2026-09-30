@@ -10,11 +10,8 @@ class CompanyItemStatus extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'company_item_status';
+
     protected $fillable = [
         'company_id',
         'item_id',
@@ -23,11 +20,6 @@ class CompanyItemStatus extends Model
         'displayed_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [

@@ -9,31 +9,27 @@ class WebhookEvent extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'webhook_events';
+
     protected $fillable = [
-        'fingerprint',
         'source',
-        'event_type',
         'doctype',
         'document_name',
-        'status',
+        'event',
+        'modified_at',
+        'fingerprint',
         'payload',
-        'error_message',
+        'received_at',
         'processed_at',
+        'status',
+        'error',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
+            'modified_at'  => 'datetime',
+            'received_at'  => 'datetime',
             'processed_at' => 'datetime',
         ];
     }
@@ -52,14 +48,14 @@ class WebhookEvent extends Model
         return $query->where('source', $source);
     }
 
-    public function scopeEventType($query, string $eventType)
-    {
-        return $query->where('event_type', $eventType);
-    }
-
     public function scopeDoctype($query, string $doctype)
     {
         return $query->where('doctype', $doctype);
+    }
+
+    public function scopeEvent($query, string $event)
+    {
+        return $query->where('event', $event);
     }
 
     public function scopeStatus($query, string $status)

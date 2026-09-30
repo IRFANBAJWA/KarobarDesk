@@ -10,15 +10,9 @@ class ShiftDenomination extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'shift_id',
-        'type',
-        // Notes
+        'denomination_type',
         'd5000',
         'd1000',
         'd500',
@@ -34,45 +28,29 @@ class ShiftDenomination extends Model
         'c10',
         'c5',
         'c1',
-        // Totals
-        'notes_total',
-        'coins_total',
-        'grand_total',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'd5000'       => 'integer',
-            'd1000'       => 'integer',
-            'd500'        => 'integer',
-            'd100'        => 'integer',
-            'd50'         => 'integer',
-            'd20'         => 'integer',
-            'd10'         => 'integer',
-            'd5'          => 'integer',
-            'd2'          => 'integer',
-            'd1'          => 'integer',
-            'c50'         => 'integer',
-            'c25'         => 'integer',
-            'c10'         => 'integer',
-            'c5'          => 'integer',
-            'c1'          => 'integer',
-            'notes_total' => 'decimal:2',
-            'coins_total' => 'decimal:2',
-            'grand_total' => 'decimal:2',
+            'd5000' => 'integer',
+            'd1000' => 'integer',
+            'd500'  => 'integer',
+            'd100'  => 'integer',
+            'd50'   => 'integer',
+            'd20'   => 'integer',
+            'd10'   => 'integer',
+            'd5'    => 'integer',
+            'd2'    => 'integer',
+            'd1'    => 'integer',
+            'c50'   => 'integer',
+            'c25'   => 'integer',
+            'c10'   => 'integer',
+            'c5'    => 'integer',
+            'c1'    => 'integer',
         ];
     }
 
-    /**
-     * Denomination face values (PKR).
-     * Column => face value.
-     */
     public const NOTES = [
         'd5000' => 5000,
         'd1000' => 1000,
@@ -109,12 +87,12 @@ class ShiftDenomination extends Model
 
     public function scopeOpening($query)
     {
-        return $query->where('type', 'OPENING');
+        return $query->where('denomination_type', 'OPENING');
     }
 
     public function scopeClosing($query)
     {
-        return $query->where('type', 'CLOSING');
+        return $query->where('denomination_type', 'CLOSING');
     }
 
     public function scopeForShift($query, int $shiftId)
@@ -124,7 +102,7 @@ class ShiftDenomination extends Model
 
     public function scopeOfType($query, string $type)
     {
-        return $query->where('type', $type);
+        return $query->where('denomination_type', $type);
     }
 
     // ---------------------------------------------------------------------
@@ -133,17 +111,17 @@ class ShiftDenomination extends Model
 
     public function isOpening(): bool
     {
-        return $this->type === 'OPENING';
+        return $this->denomination_type === 'OPENING';
     }
 
     public function isClosing(): bool
     {
-        return $this->type === 'CLOSING';
+        return $this->denomination_type === 'CLOSING';
     }
 
     /**
      * Compute totals from raw counts.
-     * Useful as a fallback if POS doesn't send totals.
+     * The table has no totals columns — compute on demand.
      */
     public function computeTotals(): array
     {

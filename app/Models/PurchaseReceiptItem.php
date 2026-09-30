@@ -10,38 +10,27 @@ class PurchaseReceiptItem extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'purchase_receipt_id',
-        'purchase_order_item_id',
         'item_id',
-        'item_code',
+        'erpnext_item_code',
         'item_name',
-        'qty',
-        'unit_price',
-        'line_discount',
-        'line_total',
-        'warehouse',
         'uom',
-        'remarks',
+        'ordered_qty',
+        'received_qty',
+        'remaining_qty',
+        'rate',
+        'warehouse',
+        'erpnext_po_line_reference',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'qty'           => 'decimal:3',
-            'unit_price'    => 'decimal:2',
-            'line_discount' => 'decimal:2',
-            'line_total'    => 'decimal:2',
+            'ordered_qty'   => 'decimal:3',
+            'received_qty'  => 'decimal:3',
+            'remaining_qty' => 'decimal:3',
+            'rate'          => 'decimal:2',
         ];
     }
 
@@ -54,18 +43,6 @@ class PurchaseReceiptItem extends Model
         return $this->belongsTo(PurchaseReceipt::class);
     }
 
-    /**
-     * Originating PO line. Nullable — direct receipts have no PO line.
-     */
-    public function purchaseOrderItem(): BelongsTo
-    {
-        return $this->belongsTo(PurchaseOrderItem::class);
-    }
-
-    /**
-     * Item reference. Nullable in practice.
-     * Snapshots (item_code, item_name) preserve truth.
-     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
@@ -90,8 +67,12 @@ class PurchaseReceiptItem extends Model
         return $query->where('warehouse', $warehouse);
     }
 
-    public function scopeFromPurchaseOrderItem($query, int $purchaseOrderItemId)
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+
+    public function lineTotal(): float
     {
-        return $query->where('purchase_order_item_id', $purchaseOrderItemId);
+        return (float) $this->received_qty * (float) $this->rate;
     }
 }

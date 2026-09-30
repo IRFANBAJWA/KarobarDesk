@@ -11,19 +11,14 @@ class Parcel extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'courier_account_id',
         'sales_invoice_id',
-
-        // Booking fields (M&P)
         'cn_number',
-        'order_reference_id',
+        'customer_reference',
+        'booking_status',
+        'active_parcel',
         'consignee_name',
         'consignee_address',
         'consignee_mobile',
@@ -32,7 +27,6 @@ class Parcel extends Model
         'pieces',
         'weight',
         'cod_amount',
-        'customer_reference',
         'product_description',
         'fragile',
         'service_type',
@@ -40,55 +34,44 @@ class Parcel extends Model
         'insurance_value',
         'location_id',
         'return_location',
-
-        // QSR fields
-        'qsr_booking_date',
+        'qsr_org_zone',
+        'qsr_org_branch',
+        'qsr_dest_zone',
+        'qsr_dest_branch',
+        'qsr_received_by',
+        'qsr_delivery_time',
         'qsr_delivery_date',
-        'qsr_status',
-        'qsr_remarks',
-
-        // Tracking (denormalized latest)
-        'last_tracking_status',
+        'qsr_payment_mode',
+        'qsr_rr_status',
+        'qsr_cheque_no',
+        'current_status',
         'last_tracking_at',
-        'last_tracking_location',
-        'delivered_at',
-        'delivered_to',
-        'delivery_attempts',
-
-        // Alerts
-        'needs_attention',
+        'last_location',
+        'attention_required',
         'attention_reason',
-        'attention_flagged_at',
-
-        // Lifecycle
-        'active_parcel',
         'booking_date',
         'booking_datetime',
-        'booking_by',
+        'booked_by',
+        'sync_status',
+        'sync_error',
+        'sync_attempts',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'pieces'               => 'integer',
-            'weight'               => 'decimal:3',
-            'cod_amount'           => 'decimal:2',
-            'insurance_value'      => 'decimal:2',
-            'qsr_booking_date'     => 'date',
-            'qsr_delivery_date'    => 'date',
-            'last_tracking_at'     => 'datetime',
-            'delivered_at'         => 'datetime',
-            'delivery_attempts'    => 'integer',
-            'needs_attention'      => 'boolean',
-            'attention_flagged_at' => 'datetime',
-            'active_parcel'        => 'boolean',
-            'booking_date'         => 'date',
-            'booking_datetime'     => 'datetime',
+            'pieces'             => 'integer',
+            'weight'             => 'decimal:3',
+            'cod_amount'         => 'decimal:2',
+            'insurance_value'    => 'decimal:2',
+            'qsr_delivery_time'  => 'datetime',
+            'qsr_delivery_date'  => 'date',
+            'last_tracking_at'   => 'datetime',
+            'attention_required' => 'boolean',
+            'active_parcel'      => 'boolean',
+            'booking_date'       => 'date',
+            'booking_datetime'   => 'datetime',
+            'sync_attempts'      => 'integer',
         ];
     }
 
@@ -106,49 +89,34 @@ class Parcel extends Model
         return $this->belongsTo(CourierAccount::class);
     }
 
-    /**
-     * Originating sales invoice. One invoice can have at most one active parcel.
-     */
     public function salesInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class);
     }
 
-    public function bookingBy(): BelongsTo
+    public function bookedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'booking_by');
+        return $this->belongsTo(User::class, 'booked_by');
     }
 
-    /**
-     * Append-only tracking history rows.
-     */
     public function statusHistory(): HasMany
     {
         return $this->hasMany(ParcelStatusHistory::class);
     }
 
-    /**
-     * Shipper advices for this parcel.
-     */
     public function advices(): HasMany
     {
         return $this->hasMany(ParcelAdvice::class);
     }
 
-    /**
-     * Settlement rows for this parcel.
-     */
     public function settlements(): HasMany
     {
         return $this->hasMany(ParcelSettlement::class);
     }
 
-    /**
-     * Sync logs referencing this parcel by CN.
-     */
     public function syncLogs(): HasMany
     {
-        return $this->hasMany(CourierSyncLog::class, 'order_reference_id', 'cn_number');
+        return $this->hasMany(CourierSyncLog::class);
     }
 
     // ---------------------------------------------------------------------
@@ -185,30 +153,29 @@ class Parcel extends Model
         return $query->where('cn_number', $cnNumber);
     }
 
-    public function scopeNeedsAttention($query)
+    public function scopeAttentionRequired($query)
     {
-        return $query->where('needs_attention', true);
+        return $query->where('attention_required', true);
     }
 
     public function scopeDelivered($query)
     {
-        return $query->whereNotNull('delivered_at');
+        return $query->where('current_status', 'delivered');
     }
 
     public function scopeInTransit($query)
     {
-        return $query->whereNull('delivered_at')
-            ->where('active_parcel', true);
+        return $query->where('active_parcel', true)
+            ->where('current_status', '!=', 'delivered');
     }
 
     /**
-     * Active parcels with no tracking progress older than N days.
      * Section 29: 4-day no-progress alert. API failure != inactivity.
      */
     public function scopeStale($query, int $days = 4)
     {
         return $query->where('active_parcel', true)
-            ->whereNull('delivered_at')
+            ->where('current_status', '!=', 'delivered')
             ->where(function ($q) use ($days) {
                 $q->whereNull('last_tracking_at')
                     ->orWhere('last_tracking_at', '<', now()->subDays($days));
@@ -218,6 +185,11 @@ class Parcel extends Model
     public function scopeBetweenBookingDates($query, $from, $to)
     {
         return $query->whereBetween('booking_date', [$from, $to]);
+    }
+
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
     }
 
     // ---------------------------------------------------------------------
@@ -231,12 +203,12 @@ class Parcel extends Model
 
     public function isDelivered(): bool
     {
-        return $this->delivered_at !== null;
+        return $this->current_status === 'delivered';
     }
 
     public function needsAttention(): bool
     {
-        return (bool) $this->needs_attention;
+        return (bool) $this->attention_required;
     }
 
     public function isFragile(): bool

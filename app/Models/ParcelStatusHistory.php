@@ -10,28 +10,20 @@ class ParcelStatusHistory extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'parcel_status_history';
+
     protected $fillable = [
         'parcel_id',
-        'cn_number',
-        'fingerprint',
-        'status',
-        'status_code',
+        'company_id',
+        'tracking_tag_id',
         'tracking_datetime',
         'location',
-        'remarks',
-        'raw_status',
+        'status',
+        'detail',
+        'event',
+        'fingerprint',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -41,7 +33,6 @@ class ParcelStatusHistory extends Model
 
     /**
      * Tracking history is append-only (Section 29, Rule 10).
-     * No updates, no deletes. Dedup is by `fingerprint`.
      */
     protected static function booted(): void
     {
@@ -63,6 +54,11 @@ class ParcelStatusHistory extends Model
         return $this->belongsTo(Parcel::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     // ---------------------------------------------------------------------
     // Scopes
     // ---------------------------------------------------------------------
@@ -72,9 +68,9 @@ class ParcelStatusHistory extends Model
         return $query->where('parcel_id', $parcelId);
     }
 
-    public function scopeByCn($query, string $cnNumber)
+    public function scopeForCompany($query, int $companyId)
     {
-        return $query->where('cn_number', $cnNumber);
+        return $query->where('company_id', $companyId);
     }
 
     public function scopeByFingerprint($query, string $fingerprint)

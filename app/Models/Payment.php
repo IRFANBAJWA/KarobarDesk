@@ -10,30 +10,27 @@ class Payment extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'sales_invoice_id',
+        'company_id',
         'account_id',
         'erpnext_account',
-        'amount',
+        'payment_method',
+        'payment_amount',
+        'reference_number',
+        'card_last_4',
+        'card_type',
+        'payment_date',
         'payment_time',
-        'remarks',
+        'received_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'amount'       => 'decimal:2',
-            'payment_time' => 'datetime:H:i:s',
+            'payment_amount' => 'decimal:2',
+            'payment_date'   => 'date',
+            'payment_time'   => 'datetime:H:i:s',
         ];
     }
 
@@ -41,20 +38,24 @@ class Payment extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Sales invoice (sale or return) this payment applies to.
-     */
     public function salesInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class);
     }
 
-    /**
-     * Account used for this payment.
-     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
     // ---------------------------------------------------------------------
@@ -71,17 +72,37 @@ class Payment extends Model
         return $query->where('account_id', $accountId);
     }
 
+    public function scopeForCompany($query, int $companyId)
+    {
+        return $query->where('company_id', $companyId);
+    }
+
+    public function scopePaymentMethod($query, string $paymentMethod)
+    {
+        return $query->where('payment_method', $paymentMethod);
+    }
+
+    public function scopeByPaymentDate($query, $date)
+    {
+        return $query->where('payment_date', $date);
+    }
+
+    public function scopeBetweenPaymentDates($query, $from, $to)
+    {
+        return $query->whereBetween('payment_date', [$from, $to]);
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
 
     public function isPositive(): bool
     {
-        return (float) $this->amount > 0;
+        return (float) $this->payment_amount > 0;
     }
 
     public function isNegative(): bool
     {
-        return (float) $this->amount < 0;
+        return (float) $this->payment_amount < 0;
     }
 }

@@ -10,30 +10,21 @@ class RejectedSalePayment extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'rejected_sale_id',
         'account_id',
         'erpnext_account',
-        'amount',
-        'payment_time',
-        'remarks',
+        'payment_method',
+        'payment_amount',
+        'reference_number',
+        'card_last_4',
+        'card_type',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'amount'       => 'decimal:2',
-            'payment_time' => 'datetime:H:i:s',
+            'payment_amount' => 'decimal:2',
         ];
     }
 
@@ -41,19 +32,11 @@ class RejectedSalePayment extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Parent rejected sale.
-     */
     public function rejectedSale(): BelongsTo
     {
         return $this->belongsTo(RejectedSale::class);
     }
 
-    /**
-     * Account used for this payment.
-     * Nullable in practice — the account might not exist locally yet.
-     * `erpnext_account` preserves the string identifier.
-     */
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
@@ -73,12 +56,17 @@ class RejectedSalePayment extends Model
         return $query->where('account_id', $accountId);
     }
 
+    public function scopePaymentMethod($query, string $paymentMethod)
+    {
+        return $query->where('payment_method', $paymentMethod);
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
 
     public function isPositive(): bool
     {
-        return (float) $this->amount > 0;
+        return (float) $this->payment_amount > 0;
     }
 }

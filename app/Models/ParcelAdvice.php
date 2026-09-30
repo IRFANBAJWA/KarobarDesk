@@ -9,40 +9,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ParcelAdvice extends Model
 {
     use HasFactory;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'parcel_advices';
     protected $fillable = [
         'parcel_id',
+        'company_id',
         'advice_option',
         'reattempt_option',
         'remarks',
         'consignee_address',
         'consignee_no',
-        'erpnext_advice_reference',
         'status',
-        'advice_sent_at',
-        'sent_by',
-        'sync_status',
-        'sync_error',
-        'synced_at',
+        'response_reference',
+        'created_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'advice_option'    => 'integer',
             'reattempt_option' => 'integer',
-            'advice_sent_at'   => 'datetime',
-            'synced_at'        => 'datetime',
         ];
     }
 
@@ -55,9 +40,14 @@ class ParcelAdvice extends Model
         return $this->belongsTo(Parcel::class);
     }
 
-    public function sentBy(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'sent_by');
+        return $this->belongsTo(Company::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     // ---------------------------------------------------------------------
@@ -67,6 +57,11 @@ class ParcelAdvice extends Model
     public function scopeForParcel($query, int $parcelId)
     {
         return $query->where('parcel_id', $parcelId);
+    }
+
+    public function scopeForCompany($query, int $companyId)
+    {
+        return $query->where('company_id', $companyId);
     }
 
     public function scopeAdviceOption($query, int $adviceOption)
@@ -84,35 +79,9 @@ class ParcelAdvice extends Model
         return $query->where('status', $status);
     }
 
-    public function scopeSyncStatus($query, string $syncStatus)
-    {
-        return $query->where('sync_status', $syncStatus);
-    }
-
-    public function scopePending($query)
-    {
-        return $query->where('sync_status', 'pending');
-    }
-
-    public function scopeSynced($query)
-    {
-        return $query->where('sync_status', 'synced');
-    }
-
-    public function scopeFailed($query)
-    {
-        return $query->where('sync_status', 'failed');
-    }
-
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
-
-    public function isSynced(): bool
-    {
-        return $this->sync_status === 'synced'
-            && $this->erpnext_advice_reference !== null;
-    }
 
     public function isReattempt(): bool
     {

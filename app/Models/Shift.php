@@ -11,17 +11,13 @@ class Shift extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
+        'shift_code',
         'company_id',
         'till_operation_id',
         'user_id',
-        'shift_code',
-        'status',
+        'shift_date',
+        'shift_type',
         'start_time',
         'end_time',
         'opening_balance',
@@ -29,41 +25,45 @@ class Shift extends Model
         'expected_cash',
         'actual_cash',
         'cash_difference',
-        'total_sales',
-        'total_returns',
-        'total_cash_sales',
-        'total_card_sales',
-        'total_discount',
-        'total_expenses',
-        'invoice_count',
+        'total_transactions',
+        'sale_count',
         'return_count',
+        'void_count',
+        'total_sales',
+        'cash_sales',
+        'card_sales',
+        'other_sales',
+        'total_discount',
+        'total_tax',
+        'total_returns',
+        'total_expenses',
+        'shift_status',
         'closed_by',
-        'closing_remarks',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'start_time'        => 'datetime',
-            'end_time'          => 'datetime',
-            'opening_balance'   => 'decimal:2',
-            'closing_balance'   => 'decimal:2',
-            'expected_cash'     => 'decimal:2',
-            'actual_cash'       => 'decimal:2',
-            'cash_difference'   => 'decimal:2',
-            'total_sales'       => 'decimal:2',
-            'total_returns'     => 'decimal:2',
-            'total_cash_sales'  => 'decimal:2',
-            'total_card_sales'  => 'decimal:2',
-            'total_discount'    => 'decimal:2',
-            'total_expenses'    => 'decimal:2',
-            'invoice_count'     => 'integer',
-            'return_count'      => 'integer',
+            'shift_date'         => 'date',
+            'start_time'         => 'datetime',
+            'end_time'           => 'datetime',
+            'opening_balance'    => 'decimal:2',
+            'closing_balance'    => 'decimal:2',
+            'expected_cash'      => 'decimal:2',
+            'actual_cash'        => 'decimal:2',
+            'cash_difference'    => 'decimal:2',
+            'total_transactions' => 'integer',
+            'sale_count'         => 'integer',
+            'return_count'       => 'integer',
+            'void_count'         => 'integer',
+            'total_sales'        => 'decimal:2',
+            'cash_sales'         => 'decimal:2',
+            'card_sales'         => 'decimal:2',
+            'other_sales'        => 'decimal:2',
+            'total_discount'     => 'decimal:2',
+            'total_tax'          => 'decimal:2',
+            'total_returns'      => 'decimal:2',
+            'total_expenses'     => 'decimal:2',
         ];
     }
 
@@ -91,10 +91,6 @@ class Shift extends Model
         return $this->belongsTo(User::class, 'closed_by');
     }
 
-    /**
-     * Opening and closing denomination rows for this shift.
-     * Expected exactly two rows: one OPENING, one CLOSING.
-     */
     public function denominations(): HasMany
     {
         return $this->hasMany(ShiftDenomination::class);
@@ -102,12 +98,17 @@ class Shift extends Model
 
     public function openingDenomination()
     {
-        return $this->hasOne(ShiftDenomination::class)->where('type', 'OPENING');
+        return $this->hasOne(ShiftDenomination::class)->where('denomination_type', 'OPENING');
     }
 
     public function closingDenomination()
     {
-        return $this->hasOne(ShiftDenomination::class)->where('type', 'CLOSING');
+        return $this->hasOne(ShiftDenomination::class)->where('denomination_type', 'CLOSING');
+    }
+
+    public function rejectedSales(): HasMany
+    {
+        return $this->hasMany(RejectedSale::class);
     }
 
     // ---------------------------------------------------------------------
@@ -146,12 +147,17 @@ class Shift extends Model
 
     public function scopeStatus($query, string $status)
     {
-        return $query->where('status', $status);
+        return $query->where('shift_status', $status);
     }
 
     public function scopeBetween($query, $from, $to)
     {
         return $query->whereBetween('start_time', [$from, $to]);
+    }
+
+    public function scopeByShiftDate($query, $date)
+    {
+        return $query->where('shift_date', $date);
     }
 
     // ---------------------------------------------------------------------

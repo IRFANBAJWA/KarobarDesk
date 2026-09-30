@@ -10,33 +10,23 @@ class PriceList extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'name',
         'erpnext_name',
-        'currency',
-        'selling',
-        'buying',
+        'name',
+        'is_selling',
         'is_active',
-        'synced_at',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'selling'   => 'boolean',
-            'buying'    => 'boolean',
-            'is_active' => 'boolean',
-            'synced_at' => 'datetime',
+            'is_selling'          => 'boolean',
+            'is_active'           => 'boolean',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
         ];
     }
 
@@ -44,18 +34,11 @@ class PriceList extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Item prices belonging to this price list.
-     */
     public function itemPrices(): HasMany
     {
         return $this->hasMany(ItemPrice::class);
     }
 
-    /**
-     * Till operations assigned to this price list.
-     * One till operation = one price list (Section 18).
-     */
     public function tillOperations(): HasMany
     {
         return $this->hasMany(TillOperation::class);
@@ -67,12 +50,27 @@ class PriceList extends Model
 
     public function scopeSelling($query)
     {
-        return $query->where('selling', true);
+        return $query->where('is_selling', true);
     }
 
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('sync_status', 'pending');
+    }
+
+    public function scopeFailed($query)
+    {
+        return $query->where('sync_status', 'failed');
     }
 
     // ---------------------------------------------------------------------
@@ -81,11 +79,16 @@ class PriceList extends Model
 
     public function isSelling(): bool
     {
-        return (bool) $this->selling;
+        return (bool) $this->is_selling;
     }
 
     public function isActive(): bool
     {
         return (bool) $this->is_active;
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
     }
 }

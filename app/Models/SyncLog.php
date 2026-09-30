@@ -10,34 +10,28 @@ class SyncLog extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'sync_logs';
+
     protected $fillable = [
         'company_id',
-        'user_id',
-        'direction',
-        'entity_type',
-        'entity_id',
+        'source',
+        'doctype',
+        'document_name',
         'operation',
+        'direction',
         'status',
-        'attempts',
+        'error',
+        'retry_count',
         'last_attempt_at',
-        'error_message',
+        'completed_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'attempts'        => 'integer',
+            'retry_count'     => 'integer',
             'last_attempt_at' => 'datetime',
+            'completed_at'    => 'datetime',
         ];
     }
 
@@ -45,18 +39,9 @@ class SyncLog extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company this sync concerns. Nullable — some syncs are global
-     * (masters like customers, items, price lists that aren't company-scoped).
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
     }
 
     // ---------------------------------------------------------------------
@@ -78,20 +63,19 @@ class SyncLog extends Model
         return $query->where('direction', 'out');
     }
 
-    public function scopeEntityType($query, string $entityType)
+    public function scopeSource($query, string $source)
     {
-        return $query->where('entity_type', $entityType);
+        return $query->where('source', $source);
     }
 
-    public function scopeEntityId($query, int $entityId)
+    public function scopeDoctype($query, string $doctype)
     {
-        return $query->where('entity_id', $entityId);
+        return $query->where('doctype', $doctype);
     }
 
-    public function scopeForEntity($query, string $entityType, int $entityId)
+    public function scopeDocumentName($query, string $documentName)
     {
-        return $query->where('entity_type', $entityType)
-            ->where('entity_id', $entityId);
+        return $query->where('document_name', $documentName);
     }
 
     public function scopeStatus($query, string $status)

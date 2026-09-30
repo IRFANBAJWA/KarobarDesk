@@ -10,39 +10,27 @@ class PurchaseOrderItem extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'purchase_order_id',
         'item_id',
-        'item_code',
+        'erpnext_item_code',
         'item_name',
+        'uom',
         'qty',
         'received_qty',
-        'unit_price',
-        'line_discount',
-        'line_total',
+        'pending_qty',
+        'rate',
         'warehouse',
-        'uom',
-        'remarks',
+        'erpnext_line_reference',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'qty'           => 'decimal:3',
-            'received_qty'  => 'decimal:3',
-            'unit_price'    => 'decimal:2',
-            'line_discount' => 'decimal:2',
-            'line_total'    => 'decimal:2',
+            'qty'          => 'decimal:3',
+            'received_qty' => 'decimal:3',
+            'pending_qty'  => 'decimal:3',
+            'rate'         => 'decimal:2',
         ];
     }
 
@@ -55,10 +43,6 @@ class PurchaseOrderItem extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    /**
-     * Item reference. Nullable in practice.
-     * Snapshots (item_code, item_name) preserve truth.
-     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);

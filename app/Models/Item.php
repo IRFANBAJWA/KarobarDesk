@@ -10,42 +10,48 @@ class Item extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'erpnext_item_code',
         'item_name',
         'item_group',
         'brand',
-        'description',
         'uom',
-        'stock_uom',
+        'barcode',
+        'alias',
+        'description',
         'weight',
-        'has_variants',
-        'variant_of',
+        'weight_uom',
+        'cost_price',
+        'standard_rate',
+        'last_purchase_rate',
+        'average_rate',
+        'tax_rate',
         'is_stock_item',
+        'is_taxable',
         'is_active',
-        'is_disabled',
-        'synced_at',
+        'has_variants',
+        'woocommerce_id',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'weight'        => 'decimal:3',
-            'has_variants'  => 'boolean',
-            'is_stock_item' => 'boolean',
-            'is_active'     => 'boolean',
-            'is_disabled'   => 'boolean',
-            'synced_at'     => 'datetime',
+            'weight'              => 'decimal:3',
+            'cost_price'          => 'decimal:2',
+            'standard_rate'       => 'decimal:2',
+            'last_purchase_rate'  => 'decimal:2',
+            'average_rate'        => 'decimal:2',
+            'tax_rate'            => 'decimal:2',
+            'is_stock_item'       => 'boolean',
+            'is_taxable'          => 'boolean',
+            'is_active'           => 'boolean',
+            'has_variants'        => 'boolean',
+            'woocommerce_id'      => 'integer',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
         ];
     }
 
@@ -53,76 +59,49 @@ class Item extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Prices for this item across price lists.
-     */
     public function itemPrices(): HasMany
     {
         return $this->hasMany(ItemPrice::class);
     }
 
-    /**
-     * Current stock snapshot rows for this item across companies.
-     */
     public function itemStocks(): HasMany
     {
         return $this->hasMany(ItemStock::class);
     }
 
-    /**
-     * Stock ledger entries for this item.
-     */
     public function stockLedgers(): HasMany
     {
         return $this->hasMany(StockLedger::class);
     }
 
-    /**
-     * Sales invoice line items referencing this item.
-     */
     public function salesInvoiceItems(): HasMany
     {
         return $this->hasMany(SalesInvoiceItem::class);
     }
 
-    /**
-     * Purchase order line items referencing this item.
-     */
     public function purchaseOrderItems(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
 
-    /**
-     * Purchase receipt line items referencing this item.
-     */
     public function purchaseReceiptItems(): HasMany
     {
         return $this->hasMany(PurchaseReceiptItem::class);
     }
 
-    /**
-     * Per-company display statuses for this item.
-     */
     public function companyItemStatuses(): HasMany
     {
         return $this->hasMany(CompanyItemStatus::class);
     }
 
-    /**
-     * Stock audit snapshot lines for this item.
-     */
     public function stockAuditItems(): HasMany
     {
         return $this->hasMany(StockAuditItem::class);
     }
 
-    /**
-     * Stock audit physical counts for this item.
-     */
-    public function stockAuditCounts(): HasMany
+    public function rejectedSaleItems(): HasMany
     {
-        return $this->hasMany(StockAuditCount::class);
+        return $this->hasMany(RejectedSaleItem::class);
     }
 
     // ---------------------------------------------------------------------
@@ -131,8 +110,7 @@ class Item extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true)
-            ->where('is_disabled', false);
+        return $query->where('is_active', true);
     }
 
     public function scopeStockItems($query)
@@ -145,27 +123,42 @@ class Item extends Model
         return $query->where('erpnext_item_code', $erpnextItemCode);
     }
 
-    public function scopeVariantsOf($query, string $templateCode)
+    public function scopeSynced($query)
     {
-        return $query->where('variant_of', $templateCode);
+        return $query->where('sync_status', 'synced');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('sync_status', 'pending');
+    }
+
+    public function scopeFailed($query)
+    {
+        return $query->where('sync_status', 'failed');
     }
 
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
 
-    public function isVariant(): bool
-    {
-        return $this->variant_of !== null;
-    }
-
     public function hasVariants(): bool
     {
         return (bool) $this->has_variants;
     }
 
+    public function isStockItem(): bool
+    {
+        return (bool) $this->is_stock_item;
+    }
+
     public function isActive(): bool
     {
-        return (bool) $this->is_active && ! (bool) $this->is_disabled;
+        return (bool) $this->is_active;
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
     }
 }

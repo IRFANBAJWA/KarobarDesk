@@ -10,35 +10,25 @@ class ItemPrice extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'price_list_id',
         'item_id',
-        'price_list_rate',
-        'currency',
-        'valid_from',
-        'valid_upto',
+        'rate',
+        'pack_rate',
         'is_active',
-        'synced_at',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'price_list_rate' => 'decimal:2',
-            'valid_from'      => 'date',
-            'valid_upto'      => 'date',
-            'is_active'       => 'boolean',
-            'synced_at'       => 'datetime',
+            'rate'                => 'decimal:2',
+            'pack_rate'           => 'decimal:2',
+            'is_active'           => 'boolean',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
         ];
     }
 
@@ -46,17 +36,11 @@ class ItemPrice extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Price list this rate belongs to.
-     */
     public function priceList(): BelongsTo
     {
         return $this->belongsTo(PriceList::class);
     }
 
-    /**
-     * Item this rate applies to.
-     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
@@ -76,10 +60,6 @@ class ItemPrice extends Model
         return $query->where('item_id', $itemId);
     }
 
-    /**
-     * Match a specific price list + item pair.
-     * Usage: ItemPrice::for(1, 42)->first();
-     */
     public function scopeFor($query, int $priceListId, int $itemId)
     {
         return $query->where('price_list_id', $priceListId)
@@ -91,6 +71,11 @@ class ItemPrice extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -100,22 +85,8 @@ class ItemPrice extends Model
         return (bool) $this->is_active;
     }
 
-    /**
-     * Whether this rate is currently valid on a given date.
-     * Defaults to today (Asia/Karachi business date).
-     */
-    public function isValidOn(?\DateTimeInterface $date = null): bool
+    public function isSynced(): bool
     {
-        $date = $date ?: now();
-
-        if ($this->valid_from && $date < $this->valid_from) {
-            return false;
-        }
-
-        if ($this->valid_upto && $date > $this->valid_upto) {
-            return false;
-        }
-
-        return true;
+        return $this->sync_status === 'synced';
     }
 }

@@ -10,62 +10,58 @@ class DayClosing extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'till_operation_id',
         'user_id',
         'closing_user_id',
         'business_date',
-        'status',
-        'closing_time',
+        'shift_count',
+        'total_transactions',
+        'sale_count',
+        'return_count',
+        'void_count',
         'total_sales',
-        'total_returns',
-        'total_cash_sales',
-        'total_card_sales',
+        'cash_sales',
+        'card_sales',
+        'other_sales',
         'total_discount',
+        'total_tax',
+        'total_returns',
         'total_expenses',
-        'total_payments_in',
-        'total_payments_out',
         'opening_balance',
         'closing_balance',
         'expected_cash',
         'actual_cash',
         'cash_difference',
-        'invoice_count',
-        'return_count',
-        'closing_remarks',
+        'closing_time',
+        'status',
+        'notes',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'business_date'      => 'date',
             'closing_time'       => 'datetime',
+            'shift_count'        => 'integer',
+            'total_transactions' => 'integer',
+            'sale_count'         => 'integer',
+            'return_count'       => 'integer',
+            'void_count'         => 'integer',
             'total_sales'        => 'decimal:2',
-            'total_returns'      => 'decimal:2',
-            'total_cash_sales'   => 'decimal:2',
-            'total_card_sales'   => 'decimal:2',
+            'cash_sales'         => 'decimal:2',
+            'card_sales'         => 'decimal:2',
+            'other_sales'        => 'decimal:2',
             'total_discount'     => 'decimal:2',
+            'total_tax'          => 'decimal:2',
+            'total_returns'      => 'decimal:2',
             'total_expenses'     => 'decimal:2',
-            'total_payments_in'  => 'decimal:2',
-            'total_payments_out' => 'decimal:2',
             'opening_balance'    => 'decimal:2',
             'closing_balance'    => 'decimal:2',
             'expected_cash'      => 'decimal:2',
             'actual_cash'        => 'decimal:2',
             'cash_difference'    => 'decimal:2',
-            'invoice_count'      => 'integer',
-            'return_count'       => 'integer',
         ];
     }
 

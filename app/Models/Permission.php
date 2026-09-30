@@ -10,35 +10,25 @@ class Permission extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'module',
         'action',
-        'display_name',
+        'label',
         'description',
+        'is_system',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
-        return [];
+        return [
+            'is_system' => 'boolean',
+        ];
     }
 
     // ---------------------------------------------------------------------
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Roles granted this permission.
-     */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'role_permissions')
@@ -59,13 +49,14 @@ class Permission extends Model
         return $query->where('action', $action);
     }
 
-    /**
-     * Match a specific module + action pair.
-     * Usage: Permission::for('stock_audit', 'verify')->first();
-     */
     public function scopeFor($query, string $module, string $action)
     {
         return $query->where('module', $module)->where('action', $action);
+    }
+
+    public function scopeSystem($query)
+    {
+        return $query->where('is_system', true);
     }
 
     // ---------------------------------------------------------------------
@@ -74,7 +65,6 @@ class Permission extends Model
 
     /**
      * Full permission key, e.g. "stock_audit.verify".
-     * Note: named "key()" to avoid clashing with Laravel's getKeyName().
      */
     public function key(): string
     {
@@ -82,10 +72,15 @@ class Permission extends Model
     }
 
     /**
-     * Human-friendly label fallback if display_name is null.
+     * Human-friendly label with fallback.
      */
-    public function label(): string
+    public function displayLabel(): string
     {
-        return $this->display_name ?: $this->key();
+        return $this->label ?: $this->key();
+    }
+
+    public function isSystem(): bool
+    {
+        return (bool) $this->is_system;
     }
 }

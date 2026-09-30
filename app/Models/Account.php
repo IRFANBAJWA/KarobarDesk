@@ -12,34 +12,26 @@ class Account extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'erpnext_account',
-        'account_name',
-        'account_type',
-        'root_type',
         'source',
-        'is_active',
+        'name',
+        'account_type',
+        'is_group',
         'is_disabled',
-        'synced_at',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'is_active'   => 'boolean',
-            'is_disabled' => 'boolean',
-            'synced_at'   => 'datetime',
+            'is_group'            => 'boolean',
+            'is_disabled'         => 'boolean',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
         ];
     }
 
@@ -47,34 +39,28 @@ class Account extends Model
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company this account belongs to.
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
 
-    /**
-     * Till operations linked to this account via till_operation_accounts.
-     */
     public function tillOperations(): BelongsToMany
     {
         return $this->belongsToMany(TillOperation::class, 'till_operation_accounts')
+            ->withPivot('is_default')
             ->withTimestamps();
     }
 
-    /**
-     * Payments made into / out of this account.
-     */
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
     }
 
-    /**
-     * Journal entry lines referencing this account.
-     */
+    public function rejectedSalePayments(): HasMany
+    {
+        return $this->hasMany(RejectedSalePayment::class);
+    }
+
     public function journalEntryAccounts(): HasMany
     {
         return $this->hasMany(JournalEntryAccount::class);
@@ -91,8 +77,7 @@ class Account extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true)
-            ->where('is_disabled', false);
+        return $query->where('is_disabled', false);
     }
 
     public function scopeSource($query, string $source)
@@ -115,13 +100,18 @@ class Account extends Model
         return $query->where('erpnext_account', $erpnextAccount);
     }
 
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
 
     public function isActive(): bool
     {
-        return (bool) $this->is_active && ! (bool) $this->is_disabled;
+        return ! (bool) $this->is_disabled;
     }
 
     public function isErpnext(): bool
@@ -132,5 +122,10 @@ class Account extends Model
     public function isLocal(): bool
     {
         return $this->source === 'local';
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
     }
 }

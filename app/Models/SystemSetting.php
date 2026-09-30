@@ -9,25 +9,26 @@ class SystemSetting extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'system_settings';
+
     protected $fillable = [
         'key',
         'value',
+        'type',
+        'group',
+        'label',
         'description',
+        'options',
+        'is_public',
+        'is_editable',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
-        return [];
+        return [
+            'is_public'   => 'boolean',
+            'is_editable' => 'boolean',
+        ];
     }
 
     // ---------------------------------------------------------------------
@@ -39,8 +40,23 @@ class SystemSetting extends Model
         return $query->where('key', $key);
     }
 
+    public function scopeGroup($query, string $group)
+    {
+        return $query->where('group', $group);
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->where('is_public', true);
+    }
+
+    public function scopeEditable($query)
+    {
+        return $query->where('is_editable', true);
+    }
+
     // ---------------------------------------------------------------------
-    // Static helpers
+    // Helpers
     // ---------------------------------------------------------------------
 
     /**
@@ -57,11 +73,44 @@ class SystemSetting extends Model
     /**
      * Write a setting value. Creates the row if it doesn't exist.
      */
-    public static function set(string $key, ?string $value, ?string $description = null): self
-    {
+    public static function set(
+        string $key,
+        ?string $value,
+        ?string $description = null,
+        string $type = 'string',
+        string $group = 'general'
+    ): self {
         return static::query()->updateOrCreate(
             ['key' => $key],
-            ['value' => $value, 'description' => $description]
+            [
+                'value'       => $value,
+                'description' => $description,
+                'type'        => $type,
+                'group'       => $group,
+            ]
         );
+    }
+
+    /**
+     * Cast the value according to the `type` column.
+     */
+    public function typedValue(): mixed
+    {
+        return match ($this->type) {
+            'int', 'integer' => (int) $this->value,
+            'float', 'decimal' => (float) $this->value,
+            'bool', 'boolean' => filter_var($this->value, FILTER_VALIDATE_BOOLEAN),
+            default => $this->value,
+        };
+    }
+
+    public function isPublic(): bool
+    {
+        return (bool) $this->is_public;
+    }
+
+    public function isEditable(): bool
+    {
+        return (bool) $this->is_editable;
     }
 }

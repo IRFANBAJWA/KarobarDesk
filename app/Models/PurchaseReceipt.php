@@ -11,46 +11,29 @@ class PurchaseReceipt extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
-        'user_id',
         'purchase_order_id',
-        'supplier',
-        'erpnext_pr_reference',
-        'pr_number',
+        'erpnext_po_reference',
+        'receipt_number',
         'receipt_date',
+        'supplier_name',
+        'supplier_erpnext_id',
+        'received_by',
         'status',
+        'erpnext_pr_reference',
         'erpnext_status',
-        'warehouse',
-        'subtotal',
-        'discount_total',
-        'tax_total',
-        'grand_total',
-        'remarks',
         'sync_status',
         'sync_error',
-        'synced_at',
+        'sync_attempts',
+        'notes',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'receipt_date'   => 'date',
-            'subtotal'       => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'tax_total'      => 'decimal:2',
-            'grand_total'    => 'decimal:2',
-            'synced_at'      => 'datetime',
+            'receipt_date'  => 'date',
+            'sync_attempts' => 'integer',
         ];
     }
 
@@ -63,18 +46,14 @@ class PurchaseReceipt extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Originating purchase order. Nullable — a receipt can be created
-     * without a PO (direct purchase), matching ERPNext behavior.
-     */
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
     public function items(): HasMany
@@ -91,14 +70,9 @@ class PurchaseReceipt extends Model
         return $query->where('company_id', $companyId);
     }
 
-    public function scopeForUser($query, int $userId)
+    public function scopeByNumber($query, string $receiptNumber)
     {
-        return $query->where('user_id', $userId);
-    }
-
-    public function scopeByNumber($query, string $prNumber)
-    {
-        return $query->where('pr_number', $prNumber);
+        return $query->where('receipt_number', $receiptNumber);
     }
 
     public function scopeByErpnextReference($query, string $reference)
@@ -109,11 +83,6 @@ class PurchaseReceipt extends Model
     public function scopeForPurchaseOrder($query, int $purchaseOrderId)
     {
         return $query->where('purchase_order_id', $purchaseOrderId);
-    }
-
-    public function scopeForWarehouse($query, string $warehouse)
-    {
-        return $query->where('warehouse', $warehouse);
     }
 
     public function scopeByReceiptDate($query, $date)
@@ -146,19 +115,14 @@ class PurchaseReceipt extends Model
         return $query->where('status', 'cancelled');
     }
 
-    public function scopeSyncStatus($query, string $syncStatus)
+    public function scopeSynced($query)
     {
-        return $query->where('sync_status', $syncStatus);
+        return $query->where('sync_status', 'synced');
     }
 
     public function scopePending($query)
     {
         return $query->where('sync_status', 'pending');
-    }
-
-    public function scopeSynced($query)
-    {
-        return $query->where('sync_status', 'synced');
     }
 
     public function scopeFailed($query)

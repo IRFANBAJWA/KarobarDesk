@@ -12,103 +12,90 @@ class TillOperation extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
+        'erpnext_name',
+        'source',
         'company_id',
         'user_id',
-        'erpnext_name',
-        'till_no',
-        'till_name',
-        'warehouse',
         'price_list_id',
         'price_list',
+        'warehouse',
+        'erpnext_role',
+        'shop_code',
+        'till_no',
+        'shop_name',
+        'address',
+        'phone',
         'is_online',
+        'allow_rate',
         'return_pin',
-        'source',
         'is_active',
-        'synced_at',
+        'erpnext_modified_at',
+        'sync_status',
+        'last_synced_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'till_no'    => 'integer',
-            'is_online'  => 'boolean',
-            'return_pin' => 'integer',
-            'is_active'  => 'boolean',
-            'synced_at'  => 'datetime',
-        ];
-    }
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'return_pin',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'till_no'             => 'integer',
+            'is_online'           => 'boolean',
+            'allow_rate'          => 'boolean',
+            'return_pin'          => 'integer',
+            'is_active'           => 'boolean',
+            'erpnext_modified_at' => 'datetime',
+            'last_synced_at'      => 'datetime',
+        ];
+    }
 
     // ---------------------------------------------------------------------
     // Relationships
     // ---------------------------------------------------------------------
 
-    /**
-     * Company this till belongs to.
-     */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
 
-    /**
-     * User bound to this till (one till per user).
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Price list assigned to this till.
-     */
     public function priceList(): BelongsTo
     {
         return $this->belongsTo(PriceList::class);
     }
 
-    /**
-     * Accounts linked to this till via till_operation_accounts.
-     */
     public function accounts(): BelongsToMany
     {
         return $this->belongsToMany(Account::class, 'till_operation_accounts')
+            ->withPivot('is_default')
             ->withTimestamps();
     }
 
-    /**
-     * Shifts run on this till.
-     */
     public function shifts(): HasMany
     {
         return $this->hasMany(Shift::class);
     }
 
-    /**
-     * Day closings for this till.
-     */
     public function dayClosings(): HasMany
     {
         return $this->hasMany(DayClosing::class);
+    }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function rejectedSales(): HasMany
+    {
+        return $this->hasMany(RejectedSale::class);
     }
 
     // ---------------------------------------------------------------------
@@ -150,6 +137,11 @@ class TillOperation extends Model
         return $query->where('source', 'local');
     }
 
+    public function scopeSynced($query)
+    {
+        return $query->where('sync_status', 'synced');
+    }
+
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -174,10 +166,11 @@ class TillOperation extends Model
         return $this->source === 'local';
     }
 
-    /**
-     * Verify a 4-digit PIN against this till's return PIN.
-     * Plain integer comparison, per Section 19.
-     */
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced';
+    }
+
     public function verifyReturnPin(int $pin): bool
     {
         return $this->return_pin === $pin;

@@ -11,39 +11,38 @@ class RejectedSale extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
+        'till_operation_id',
         'user_id',
+        'customer_id',
+        'shift_id',
         'client_request_id',
         'invoice_number',
-        'invoice_type',
-        'rejected_reason',
+        'subtotal',
+        'discount_amount',
+        'tax_amount',
+        'grand_total',
+        'rejection_reason',
         'status',
+        'sales_invoice_id',
         'sync_status',
-        'approved_by',
-        'approved_at',
-        'cancelled_by',
-        'cancelled_at',
-        'cancel_reason',
-        'approved_sales_invoice_id',
-        'payload_hash',
+        'synced_to_pos_at',
+        'resolved_by',
+        'resolved_at',
+        'resolution_notes',
+        'payload_snapshot',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
-            'approved_at'  => 'datetime',
-            'cancelled_at' => 'datetime',
+            'subtotal'         => 'decimal:2',
+            'discount_amount'  => 'decimal:2',
+            'tax_amount'       => 'decimal:2',
+            'grand_total'      => 'decimal:2',
+            'synced_to_pos_at' => 'datetime',
+            'resolved_at'      => 'datetime',
         ];
     }
 
@@ -56,28 +55,34 @@ class RejectedSale extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function tillOperation(): BelongsTo
+    {
+        return $this->belongsTo(TillOperation::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function approvedBy(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(Customer::class);
     }
 
-    public function cancelledBy(): BelongsTo
+    public function shift(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cancelled_by');
+        return $this->belongsTo(Shift::class);
     }
 
-    /**
-     * Sales invoice created when this rejection was approved.
-     * Nullable — only set after approval.
-     */
-    public function approvedSalesInvoice(): BelongsTo
+    public function salesInvoice(): BelongsTo
     {
-        return $this->belongsTo(SalesInvoice::class, 'approved_sales_invoice_id');
+        return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function resolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
     }
 
     public function items(): HasMany
@@ -136,5 +141,10 @@ class RejectedSale extends Model
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
+    }
+
+    public function isResolved(): bool
+    {
+        return $this->resolved_at !== null;
     }
 }

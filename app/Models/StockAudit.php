@@ -11,43 +11,29 @@ class StockAudit extends Model
 {
     use HasFactory;
 
-    /**
-     * Valid lifecycle states (Section 22).
-     */
-    public const STATUS_DRAFT      = 'draft';
-    public const STATUS_COUNTING   = 'counting';
-    public const STATUS_VERIFYING  = 'verifying';
-    public const STATUS_FINALIZED  = 'finalized';
+    protected $table = 'stock_audits';
 
-    /**
-     * Audit areas (Section 22).
-     */
+    public const STATUS_DRAFT     = 'draft';
+    public const STATUS_COUNTING  = 'counting';
+    public const STATUS_VERIFYING = 'verifying';
+    public const STATUS_FINALIZED = 'finalized';
+
     public const AREA_SHOP   = 'shop';
     public const AREA_ONLINE = 'online';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'company_id',
         'audit_date',
-        'area',
+        'audit_type',
         'status',
         'system_snapshot_at',
-        'finalized_at',
+        'started_by',
         'finalized_by',
+        'finalized_at',
         'immutability_hash',
-        'created_by',
-        'remarks',
+        'notes',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -59,8 +45,7 @@ class StockAudit extends Model
 
     /**
      * Immutability enforcement (Section 22):
-     * once status = 'finalized', no updates and no deletes are allowed
-     * from any user — salesperson, checker, manager, or admin.
+     * once status = 'finalized', no updates and no deletes.
      */
     protected static function booted(): void
     {
@@ -86,9 +71,9 @@ class StockAudit extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function createdBy(): BelongsTo
+    public function startedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'started_by');
     }
 
     public function finalizedBy(): BelongsTo
@@ -96,25 +81,16 @@ class StockAudit extends Model
         return $this->belongsTo(User::class, 'finalized_by');
     }
 
-    /**
-     * Per-item snapshot + totals + discrepancy.
-     */
     public function items(): HasMany
     {
         return $this->hasMany(StockAuditItem::class);
     }
 
-    /**
-     * Per-person physical counts.
-     */
     public function counts(): HasMany
     {
-        return $this->hasMany(StockAuditCount::class);
+        return $this->hasMany(StockAuditCount::class, 'stock_audit_item_id');
     }
 
-    /**
-     * Checker verifications.
-     */
     public function verifications(): HasMany
     {
         return $this->hasMany(StockAuditVerification::class);
@@ -139,19 +115,19 @@ class StockAudit extends Model
         return $query->whereBetween('audit_date', [$from, $to]);
     }
 
-    public function scopeArea($query, string $area)
+    public function scopeType($query, string $type)
     {
-        return $query->where('area', $area);
+        return $query->where('audit_type', $type);
     }
 
     public function scopeShop($query)
     {
-        return $query->where('area', self::AREA_SHOP);
+        return $query->where('audit_type', self::AREA_SHOP);
     }
 
     public function scopeOnline($query)
     {
-        return $query->where('area', self::AREA_ONLINE);
+        return $query->where('audit_type', self::AREA_ONLINE);
     }
 
     public function scopeStatus($query, string $status)
@@ -214,11 +190,11 @@ class StockAudit extends Model
 
     public function isShop(): bool
     {
-        return $this->area === self::AREA_SHOP;
+        return $this->audit_type === self::AREA_SHOP;
     }
 
     public function isOnline(): bool
     {
-        return $this->area === self::AREA_ONLINE;
+        return $this->audit_type === self::AREA_ONLINE;
     }
 }
