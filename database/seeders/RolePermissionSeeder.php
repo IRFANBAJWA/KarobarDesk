@@ -21,7 +21,7 @@ class RolePermissionSeeder extends Seeder
             );
         }
 
-        // Admin: all except system-level manage permissions
+        // Admin: all except system-level manage
         $adminId = $roleIds['admin'];
         $adminExcluded = [
             ['sync', 'manage'],
@@ -49,7 +49,7 @@ class RolePermissionSeeder extends Seeder
             }
         }
 
-        // Manager: operational + reporting, no admin/system
+        // Manager: operational + reporting + stock audit
         $managerId = $roleIds['manager'];
         $managerAllowed = [
             ['sales', 'view'],
@@ -63,7 +63,11 @@ class RolePermissionSeeder extends Seeder
             ['payments', 'create'],
             ['payments', 'edit'],
             ['stock', 'view'],
-            ['stock', 'adjust'],
+            ['stock', 'display'],
+            ['stock_audit', 'enter'],
+            ['stock_audit', 'view'],
+            ['stock_audit', 'verify'],
+            ['stock_audit', 'finalize'],
             ['items', 'view'],
             ['item_prices', 'view'],
             ['customers', 'view'],
@@ -131,6 +135,26 @@ class RolePermissionSeeder extends Seeder
                 if ($p->module === $a[0] && $p->action === $a[1]) {
                     DB::table('role_permissions')->updateOrInsert(
                         ['role_id' => $cashierId, 'permission_id' => $p->id],
+                        ['created_at' => now(), 'updated_at' => now()]
+                    );
+                    break;
+                }
+            }
+        }
+
+        // Sales Person: stock audit entry + view only
+        $salesPersonId = $roleIds['sales_person'];
+        $salesPersonAllowed = [
+            ['stock_audit', 'enter'],
+            ['stock_audit', 'view'],
+            ['stock', 'view'],
+            ['items', 'view'],
+        ];
+        foreach ($permissions as $p) {
+            foreach ($salesPersonAllowed as $a) {
+                if ($p->module === $a[0] && $p->action === $a[1]) {
+                    DB::table('role_permissions')->updateOrInsert(
+                        ['role_id' => $salesPersonId, 'permission_id' => $p->id],
                         ['created_at' => now(), 'updated_at' => now()]
                     );
                     break;

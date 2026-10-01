@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('till_operation_id')->nullable()->constrained('till_operations')->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('closing_user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->date('business_date')->index();
+            $table->date('business_date');
             $table->unsignedInteger('shift_count')->default(0);
             $table->unsignedInteger('total_transactions')->default(0);
             $table->unsignedInteger('sale_count')->default(0);

@@ -29,7 +29,7 @@ class RoleSeeder extends Seeder
             [
                 'name' => 'manager',
                 'label' => 'Manager',
-                'description' => 'Operational management. Reports, approvals, purchasing.',
+                'description' => 'Operational management. Reports, approvals, purchasing, stock audit.',
                 'is_system' => true,
                 'is_super_admin' => false,
                 'is_active' => true,
@@ -42,12 +42,20 @@ class RoleSeeder extends Seeder
                 'is_super_admin' => false,
                 'is_active' => true,
             ],
+            [
+                'name' => 'sales_person',
+                'label' => 'Sales Person',
+                'description' => 'Shop or online salesperson. Enters daily stock audit counts.',
+                'is_system' => true,
+                'is_super_admin' => false,
+                'is_active' => true,
+            ],
         ];
 
         foreach ($roles as $role) {
             DB::table('roles')->updateOrInsert(
                 ['name' => $role['name']],
-                $role + ['created_at' => now(), 'updated_at' => now()]
+                array_merge($role, ['updated_at' => now()])
             );
         }
     }

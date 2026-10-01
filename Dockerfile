@@ -4,12 +4,14 @@ WORKDIR /var/www/html
 
 RUN apt-get update \
     && apt-get install -y \
-    libzip-dev \
-    unzip \
+        libzip-dev \
+        libicu-dev \
+        unzip \
     && docker-php-ext-install \
-    pdo \
-    pdo_mysql \
-    zip \
+        pdo \
+        pdo_mysql \
+        zip \
+        intl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
