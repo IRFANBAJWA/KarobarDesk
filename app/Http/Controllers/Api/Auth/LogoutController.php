@@ -7,6 +7,8 @@ use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\TransientToken;
 
 class LogoutController extends Controller
 {
@@ -14,11 +16,12 @@ class LogoutController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user  = $request->user();
         $token = $user?->currentAccessToken();
 
-        // POS: bearer token -> revoke it
-        if ($token) {
+        // Only real persisted tokens can (and should) be deleted.
+        // Session-authenticated requests get a TransientToken which has no delete().
+        if ($token instanceof PersonalAccessToken) {
             $token->delete();
             $mode = 'pos';
         } else {
