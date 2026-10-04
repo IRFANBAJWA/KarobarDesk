@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             FieldPermissionSeeder::class,
             CourierPartnerSeeder::class,
+            DevDataSeeder::class,
         ]);
     }
 }
