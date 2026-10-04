@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\CompanyResource;
 use App\Http\Resources\Api\UserResource;
+use App\Models\Permission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,21 +15,23 @@ class MeController extends Controller
     {
         $user = $request->user();
 
+        // Eager-load everything needed in one round of queries.
         $user->load(['roles.permissions', 'company']);
 
         $isSuperAdmin = $user->isSuperAdmin();
 
-        // Roles: name + label only
+        // Roles: name, label, is_super_admin
         $roles = $user->roles->map(fn($r) => [
             'name'           => $r->name,
             'label'          => $r->label,
             'is_super_admin' => (bool) $r->is_super_admin,
         ])->values();
 
-        // Permissions: unique module + action pairs.
-        // Super Admin gets every permission in the DB (they bypass checks anyway).
+        // Permissions:
+        //  - Super Admin gets every permission in the DB (bypass at request time).
+        //  - Regular users get the unique set of permissions from their roles.
         if ($isSuperAdmin) {
-            $permissions = \App\Models\Permission::query()
+            $permissions = Permission::query()
                 ->select(['module', 'action'])
                 ->orderBy('module')
                 ->orderBy('action')
