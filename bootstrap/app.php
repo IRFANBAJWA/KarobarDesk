@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         // Register the alias (so we can use 'active' on routes)
         $middleware->alias([
-            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'active'         => \App\Http\Middleware\EnsureUserIsActive::class,
+            'company.access' => \App\Http\Middleware\EnsureCompanyAccess::class,
         ]);
 
         // Append to the api group (runs after sanctum auth)
