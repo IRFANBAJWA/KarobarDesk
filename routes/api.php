@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\FieldPermissionController;
+use App\Http\Controllers\Api\CompanySwitchController;
 use App\Http\Controllers\Api\Auth\MeController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,4 +25,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [MeController::class, 'show']);
     Route::post('/logout', [LogoutController::class, 'logout']);
     Route::get('/field-permissions/{form}', [FieldPermissionController::class, 'show']);
+    Route::post('/company/switch', [CompanySwitchController::class, 'switch'])
+        ->middleware('company.access');
 });
