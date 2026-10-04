@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active'         => \App\Http\Middleware\EnsureUserIsActive::class,
             'company.access' => \App\Http\Middleware\EnsureCompanyAccess::class,
+            'field.perms'    => \App\Http\Middleware\EnforceFieldPermissions::class,
         ]);
 
         // Append to the api group (runs after sanctum auth)
