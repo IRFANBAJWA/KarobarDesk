@@ -25,8 +25,7 @@ class EnsureCompanyAccess
      *   - Manager / Admin    -> companies via user_company_access OR own company_id
      *   - Cashier / Sales    -> only own company_id
      *
-     * This middleware is applied per-route, not globally. Routes without
-     * company context do not use it.
+     * Applied per-route (not global). Routes without company context skip it.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -36,14 +35,12 @@ class EnsureCompanyAccess
             return $next($request);
         }
 
-        // Super Admin bypasses company scoping entirely.
         if ($user->isSuperAdmin()) {
             return $next($request);
         }
 
         $companyId = $this->resolveCompanyId($request, $user);
 
-        // No company context in the request -> nothing to enforce.
         if ($companyId === null) {
             return $next($request);
         }
@@ -69,26 +66,20 @@ class EnsureCompanyAccess
 
     private function resolveCompanyId(Request $request, $user): ?int
     {
-        // 1. Header (SPA sends after switching active company)
         $headerCompanyId = $request->header('X-Company-Id');
         if ($headerCompanyId !== null && $headerCompanyId !== '') {
             return (int) $headerCompanyId;
         }
 
-        // 2. Request body / query
         $bodyCompanyId = $request->input('company_id');
         if ($bodyCompanyId !== null && $bodyCompanyId !== '') {
             return (int) $bodyCompanyId;
         }
 
-        // 3. Fallback: the user's active company (may be null for Super Admin, but
-        //    we've already bypassed Super Admin above, so this is only hit for
-        //    regular users).
         if ($user->company_id !== null) {
             return (int) $user->company_id;
         }
 
-        // 4. No company context.
         return null;
     }
 }
