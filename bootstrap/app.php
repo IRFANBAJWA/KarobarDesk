@@ -12,16 +12,22 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //Api
+        // Api
         $middleware->statefulApi();
         $middleware->validateCsrfTokens(except: [
             'api/login',
         ]);
+
+        // Return 401 JSON for unauthenticated requests instead of
+        // redirecting to a named "login" route (which doesn't exist).
+        $middleware->redirectGuestsTo(fn() => null);
+
         // Register the alias (so we can use 'active' on routes)
         $middleware->alias([
             'active'         => \App\Http\Middleware\EnsureUserIsActive::class,
             'company.access' => \App\Http\Middleware\EnsureCompanyAccess::class,
             'field.perms'    => \App\Http\Middleware\EnforceFieldPermissions::class,
+            'super.admin'    => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
 
         // Append to the api group (runs after sanctum auth)

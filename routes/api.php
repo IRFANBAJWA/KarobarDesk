@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\FieldPermissionController;
 use App\Http\Controllers\Api\CompanySwitchController;
 use App\Http\Controllers\Api\Auth\MeController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\SyncController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,4 +28,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/field-permissions/{form}', [FieldPermissionController::class, 'show']);
     Route::post('/company/switch', [CompanySwitchController::class, 'switch'])
         ->middleware('company.access');
+});
+
+Route::middleware(['auth:sanctum', 'super.admin'])->group(function () {
+    Route::get('/sync/status',   [SyncController::class, 'status']);
+    Route::get('/sync/activity', [SyncController::class, 'activity']);
+    Route::post('/sync/test',    [SyncController::class, 'test']);
+    Route::post('/sync/{step}',  [SyncController::class, 'run']);
 });
