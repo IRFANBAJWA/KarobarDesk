@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-
 import AppLayout from '@/layouts/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import Login from '@/pages/Login';
+import Setup from '@/pages/Setup';
 import ProtectedRoute from '@/routes/ProtectedRoute';
 
 export default function App() {
@@ -13,6 +13,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="setup" element={<Setup />} />
         </Route>
       </Route>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { ChevronDown, LogOut, Store } from 'lucide-react';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { ChevronDown, LogOut, Settings, Store } from 'lucide-react';
 
 import { useAuth } from '@/auth/useAuth';
 import { ThemeToggle } from '@/theme/ThemeToggle';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 export default function AppLayout() {
   const { user, roles, activeCompany, isSuperAdmin, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const displayName = user?.name || user?.username || 'User';
   const initials = displayName
@@ -28,6 +29,7 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-white/5 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between px-4">
+          {/* Brand */}
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">
               <Store className="h-4 w-4 text-white" />
@@ -37,6 +39,7 @@ export default function AppLayout() {
             </span>
           </div>
 
+          {/* Right cluster */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
@@ -57,11 +60,14 @@ export default function AppLayout() {
 
               {menuOpen && (
                 <>
+                  {/* Backdrop to close on outside click */}
                   <div
                     className="fixed inset-0 z-40"
                     onClick={() => setMenuOpen(false)}
                   />
+
                   <div className="absolute right-0 top-10 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-neutral-900/95 shadow-2xl backdrop-blur-xl">
+                    {/* User info */}
                     <div className="px-4 py-3">
                       <p className="text-sm font-medium">{displayName}</p>
                       <p className="text-xs text-muted-foreground">
@@ -69,6 +75,7 @@ export default function AppLayout() {
                       </p>
                     </div>
 
+                    {/* Role badges */}
                     {roles.length > 0 && (
                       <div className="flex flex-wrap gap-1 px-4 pb-3">
                         {roles.map((r) => (
@@ -82,6 +89,7 @@ export default function AppLayout() {
                       </div>
                     )}
 
+                    {/* Company context */}
                     <div className="border-t border-white/5 px-4 py-2 text-xs text-muted-foreground">
                       {isSuperAdmin
                         ? 'Super Admin · all companies'
@@ -90,6 +98,24 @@ export default function AppLayout() {
                           : 'No active company'}
                     </div>
 
+                    {/* Setup & Sync — Super Admin only */}
+                    {isSuperAdmin && (
+                      <div className="border-t border-white/5">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            navigate('/setup');
+                          }}
+                          className="w-full justify-start rounded-none text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Setup &amp; Sync
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Sign out */}
                     <div className="border-t border-white/5">
                       <Button
                         variant="ghost"
