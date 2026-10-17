@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import {
     LayoutDashboard,
     Users,
+    UsersRound,
     ChevronLeft,
     ChevronRight,
     Building2,
@@ -50,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
         path: "item-prices",
         roles: ["super_admin", "admin"],
     },
+    { label: "Customers", icon: UsersRound, path: "customers" },
 ];
 
 const STORAGE_KEY = "karobardesk.sidebar.collapsed";

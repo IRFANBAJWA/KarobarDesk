@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/useAuth";
 import ItemsTable from "@/modules/items/components/ItemsTable";
@@ -13,12 +13,10 @@ import { listItems } from "@/modules/items/api";
 import type { Item } from "@/modules/items/types";
 
 // Groups that are hidden from the default view and dropdown.
-// Revealed by the "Show internal items" toggle.
 const HIDDEN_GROUPS = ["Raw Material"];
 
 export default function Items() {
     const { roles } = useAuth();
-
     const roleNames = useMemo(() => roles.map((r) => r.name), [roles]);
     const canEdit = useMemo(
         () =>
@@ -29,6 +27,13 @@ export default function Items() {
     );
 
     const [items, setItems] = useState<Item[]>([]);
+    const [meta, setMeta] = useState<{
+        current_page: number;
+        last_page: number;
+        total: number;
+    } | null>(null);
+    const [page, setPage] = useState(1);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<ItemsFilterState>(
@@ -43,24 +48,40 @@ export default function Items() {
         setLoading(true);
         setError(null);
         try {
-            const res = await listItems();
-            const list: Item[] = Array.isArray(res)
-                ? (res as unknown as Item[])
-                : Array.isArray(res?.data)
-                  ? res.data
-                  : [];
-            setItems(list);
+            const res = await listItems({
+                page,
+                search: filters.search.trim() || undefined,
+                item_group:
+                    filters.itemGroup === "all" ? undefined : filters.itemGroup,
+                is_active:
+                    filters.active === "all"
+                        ? undefined
+                        : filters.active === "active",
+                sync_status: filters.sync === "all" ? undefined : filters.sync,
+                hide_internal: !filters.showInternal, // <-- SEND THIS TO BACKEND
+            });
+
+            // REMOVED THE CLIENT-SIDE FILTER HERE
+            setItems(res.data);
+            setMeta(res.meta);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Failed to load items.");
             setItems([]);
+            setMeta(null);
         } finally {
             setLoading(false);
         }
     }
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [filters]);
+
+    // Load when page or filters change
     useEffect(() => {
         load();
-    }, []);
+    }, [page, filters]);
 
     useEffect(() => {
         if (!toast) return;
@@ -68,7 +89,8 @@ export default function Items() {
         return () => clearTimeout(t);
     }, [toast]);
 
-    // Live item group list — unique, sorted, hides internal groups unless toggled
+    // Item groups for the dropdown (we extract them from the current page's items)
+    // Note: If you want ALL groups in the dropdown, the backend should return a separate list of groups.
     const itemGroups = useMemo(() => {
         const set = new Set<string>();
         for (const it of items) {
@@ -80,59 +102,8 @@ export default function Items() {
         return Array.from(set).sort((a, b) => a.localeCompare(b));
     }, [items, filters.showInternal]);
 
-    const filtered = useMemo(() => {
-        const safeItems = Array.isArray(items) ? items : [];
-        const q = filters.search.trim().toLowerCase();
-
-        return safeItems.filter((it) => {
-            // Hide internal groups unless explicitly revealed
-            if (
-                !filters.showInternal &&
-                it.item_group &&
-                HIDDEN_GROUPS.includes(it.item_group)
-            ) {
-                return false;
-            }
-
-            // Specific group filter
-            if (
-                filters.itemGroup !== "all" &&
-                it.item_group !== filters.itemGroup
-            ) {
-                return false;
-            }
-
-            // Active filter
-            if (filters.active === "active" && !it.is_active) return false;
-            if (filters.active === "inactive" && it.is_active) return false;
-
-            // Sync filter
-            if (filters.sync !== "all") {
-                if ((it.sync_status ?? "").toLowerCase() !== filters.sync)
-                    return false;
-            }
-
-            // Search
-            if (q) {
-                const hay = [
-                    it.item_name,
-                    it.erpnext_item_code,
-                    it.barcode,
-                    it.alias,
-                    it.item_group,
-                    it.brand,
-                ]
-                    .filter(Boolean)
-                    .join(" ")
-                    .toLowerCase();
-                if (!hay.includes(q)) return false;
-            }
-
-            return true;
-        });
-    }, [items, filters]);
-
     function handleSaved(updated: Item) {
+        // Update the item in the current page
         setItems((prev) =>
             prev.map((it) =>
                 it.id === updated.id ? { ...it, ...updated } : it,
@@ -167,8 +138,8 @@ export default function Items() {
             <ItemsFilters
                 value={filters}
                 onChange={setFilters}
-                totalCount={items.length}
-                filteredCount={filtered.length}
+                totalCount={meta?.total ?? 0}
+                filteredCount={items.length}
                 itemGroups={itemGroups}
             />
 
@@ -180,12 +151,50 @@ export default function Items() {
 
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
                 <ItemsTable
-                    items={filtered}
+                    items={items}
                     loading={loading}
                     canEdit={canEdit}
                     onView={(it) => setDrawerItem(it)}
                     onEdit={(it) => setEditItem(it)}
                 />
+
+                {/* Pagination Bar */}
+                {meta && meta.total > 0 && (
+                    <div className="flex items-center justify-between gap-3 border-t border-white/10 px-6 py-3">
+                        <span className="text-xs text-muted-foreground">
+                            Showing {(meta.current_page - 1) * 50 + 1}–
+                            {Math.min(meta.current_page * 50, meta.total)} of{" "}
+                            {meta.total}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                disabled={page <= 1 || loading}
+                                onClick={() =>
+                                    setPage((p) => Math.max(1, p - 1))
+                                }
+                                className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-xs text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:opacity-40"
+                            >
+                                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                            </button>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                                Page {meta.current_page} of {meta.last_page}
+                            </span>
+                            <button
+                                type="button"
+                                disabled={page >= meta.last_page || loading}
+                                onClick={() =>
+                                    setPage((p) =>
+                                        Math.min(meta.last_page, p + 1),
+                                    )
+                                }
+                                className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-xs text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:opacity-40"
+                            >
+                                Next <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <ItemDetailDrawer

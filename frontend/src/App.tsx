@@ -9,6 +9,7 @@ import Items from "@/pages/Items";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import PriceLists from "@/pages/PriceLists";
 import ItemPrices from "@/pages/ItemPrices";
+import Customers from "@/pages/Customers";
 
 export default function App() {
     return (
@@ -24,6 +25,7 @@ export default function App() {
                     <Route path="/items" element={<Items />} />
                     <Route path="/price-lists" element={<PriceLists />} />
                     <Route path="/item-prices" element={<ItemPrices />} />
+                    <Route path="/customers" element={<Customers />} />
                 </Route>
             </Route>
 

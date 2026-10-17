@@ -65,19 +65,58 @@ class ItemController extends Controller
     // Admin list — all items + counts, SA / admin / manager only
     // ---------------------------------------------------------------------
 
-    public function listAll(Request $request): AnonymousResourceCollection
+    public function listAll(Request $request): JsonResponse
     {
         $this->authorizeAdminManager($request);
 
-        $items = Item::query()
-            ->withCount(self::COUNTS)
-            ->orderBy('item_name')
-            ->get();
+        $query = Item::query()->withCount(self::COUNTS);
 
+        // 1. Search filter
+        if ($search = $request->string('search')->toString()) {
+            $query->where(function ($q) use ($search) {
+                $q->where('item_name', 'like', "%{$search}%")
+                    ->orWhere('erpnext_item_code', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhere('alias', 'like', "%{$search}%");
+            });
+        }
 
-        return ItemResource::collection($items);
+        // 2. Item Group filter
+        if ($itemGroup = $request->string('item_group')->toString()) {
+            $query->where('item_group', $itemGroup);
+        }
+
+        // 3. Active/Inactive filter
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        // 4. Sync Status filter
+        if ($syncStatus = $request->string('sync_status')->toString()) {
+            $query->where('sync_status', $syncStatus);
+        }
+
+        // 5. Hide Internal (Raw Material)
+        if ($request->boolean('hide_internal', false)) {
+            $query->where(function ($q) {
+                $q->whereNull('item_group')
+                    ->orWhere('item_group', '!=', 'Raw Material');
+            });
+        }
+
+        // 6. Sorting & Pagination
+        $paginator = $query->orderBy('item_name')->paginate(50);
+
+        return response()->json([
+            'data' => ItemResource::collection($paginator->items()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+                'last_page'    => $paginator->lastPage(),
+            ]
+        ]);
     }
-
     // ---------------------------------------------------------------------
     // Show — single item + counts
     // ---------------------------------------------------------------------

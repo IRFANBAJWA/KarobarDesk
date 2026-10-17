@@ -43,7 +43,10 @@ export interface Item {
 export interface ListItemsResponse {
   data: Item[];
 }
-
+export interface PaginatedItemsResponse {
+  data: Item[];
+  meta: { current_page: number; last_page: number; total: number; };
+}
 export interface ShowItemResponse {
   data: Item;
 }

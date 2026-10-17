@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\PriceListController;
 use App\Http\Controllers\Api\ItemPriceController;
+use App\Http\Controllers\Api\CustomerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,6 +55,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/item-prices', [ItemPriceController::class, 'store']);
     Route::get('/item-prices/{itemPrice}', [ItemPriceController::class, 'show']);
     Route::patch('/item-prices/{itemPrice}', [ItemPriceController::class, 'update']);
+
+    // Customers
+    Route::get('/customers', [CustomerController::class, 'index']);
+    Route::get('/customers/admin', [CustomerController::class, 'listAll']);      // MUST be before {customer}
+    Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+    Route::patch('/customers/{customer}', [CustomerController::class, 'update']);
 });
 
 Route::middleware(['auth:sanctum', 'super.admin'])->group(function () {

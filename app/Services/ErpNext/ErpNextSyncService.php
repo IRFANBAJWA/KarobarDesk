@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Services\ErpNext;
+
 use Carbon\Carbon;
 
 use App\Models\Account;
@@ -176,163 +177,163 @@ class ErpNextSyncService
         return compact('inserted', 'updated');
     }
 
-protected function syncItems(): array
-{
-    $rows = $this->client->listAll('Item', [
-        'fields' => '["name","item_code","item_name","item_group","brand","stock_uom","description","weight_per_unit","weight_uom","is_stock_item","has_variants","variant_of","modified"]',
-    ], 100);
+    protected function syncItems(): array
+    {
+        $rows = $this->client->listAll('Item', [
+            'fields' => '["name","item_code","item_name","item_group","brand","stock_uom","description","weight_per_unit","weight_uom","is_stock_item","has_variants","variant_of","modified"]',
+        ], 100);
 
-    $inserted = 0;
-    $updated  = 0;
+        $inserted = 0;
+        $updated  = 0;
 
-    DB::transaction(function () use ($rows, &$inserted, &$updated) {
+        DB::transaction(function () use ($rows, &$inserted, &$updated) {
+            foreach ($rows as $row) {
+                $itemCode  = $row['item_code'] ?? $row['name'];
+                $itemName  = $row['item_name'] ?? $itemCode;
+                $itemGroup = $row['item_group'] ?? '';
+
+                $existing = Item::where('erpnext_item_code', $itemCode)->first();
+
+                $payload = [
+                    'erpnext_item_code'   => $itemCode,
+                    'item_name'           => $itemName,
+                    'item_group'          => $itemGroup ?: null,
+                    'brand'               => $row['brand'] ?? null,
+                    'uom'                 => $row['stock_uom'] ?? null,
+                    'description'         => $row['description'] ?? null,
+                    'weight'              => $row['weight_per_unit'] ?? null,
+                    'weight_uom'          => $row['weight_uom'] ?? null,
+                    'is_stock_item'       => (bool) ($row['is_stock_item'] ?? 1),
+                    'has_variants'        => (bool) ($row['has_variants'] ?? 0),
+                    'is_active'           => true,
+
+                    // Computed: alias from item_group, barcode from item_code
+                    'alias'               => $this->makeAlias($itemGroup),
+                    'barcode'             => $itemCode,
+
+                    'erpnext_modified_at' => $row['modified'] ?? null,
+                    'sync_status'         => 'synced',
+                    'last_synced_at'      => now(),
+                ];
+
+                if ($existing) {
+                    $existing->update($payload);
+                    $updated++;
+                } else {
+                    Item::create($payload);
+                    $inserted++;
+                }
+            }
+        });
+
+        return compact('inserted', 'updated');
+    }
+
+    /**
+     * First letter of each word, uppercase.
+     * "Summer Collection" → "SC"
+     * ""                  → ""
+     */
+    protected function makeAlias(string $source): string
+    {
+        $source = trim($source);
+        if ($source === '') {
+            return '';
+        }
+
+        $words = preg_split('/\s+/', $source);
+        $alias = '';
+
+        foreach ($words as $word) {
+            if ($word === '') {
+                continue;
+            }
+            $alias .= strtoupper($word[0]);
+        }
+
+        return $alias;
+    }
+
+    protected function syncItemPrices(): array
+    {
+        // 1. Pull all Item Price rows from ERPNext (paginated, page size 100).
+        $rows = $this->client->listAll('Item Price', [
+            'fields' => json_encode([
+                'name',
+                'item_code',
+                'price_list',
+                'price_list_rate',
+                'pack_rate',
+                'selling',
+                'modified',
+            ]),
+        ], 100);
+
+        // 2. Pre-load lookup maps — faster than querying inside the loop.
+        $priceListMap = PriceList::query()
+            ->pluck('id', 'erpnext_name')
+            ->all();
+
+        $itemMap = Item::query()
+            ->pluck('id', 'erpnext_item_code')
+            ->all();
+
+        $inserted = 0;
+        $updated  = 0;
+        $skipped  = 0;
+        $now      = now();
+
         foreach ($rows as $row) {
-            $itemCode  = $row['item_code'] ?? $row['name'];
-            $itemName  = $row['item_name'] ?? $itemCode;
-            $itemGroup = $row['item_group'] ?? '';
+            $priceListName = $row['price_list'] ?? null;
+            $itemCode      = $row['item_code']  ?? null;
 
-            $existing = Item::where('erpnext_item_code', $itemCode)->first();
+            if (! $priceListName || ! $itemCode) {
+                $skipped++;
+                continue;
+            }
+
+            if (! isset($priceListMap[$priceListName], $itemMap[$itemCode])) {
+                $skipped++;
+                continue;
+            }
+
+            $priceListId = $priceListMap[$priceListName];
+            $itemId      = $itemMap[$itemCode];
 
             $payload = [
-                'erpnext_item_code'   => $itemCode,
-                'item_name'           => $itemName,
-                'item_group'          => $itemGroup ?: null,
-                'brand'               => $row['brand'] ?? null,
-                'uom'                 => $row['stock_uom'] ?? null,
-                'description'         => $row['description'] ?? null,
-                'weight'              => $row['weight_per_unit'] ?? null,
-                'weight_uom'          => $row['weight_uom'] ?? null,
-                'is_stock_item'       => (bool) ($row['is_stock_item'] ?? 1),
-                'has_variants'        => (bool) ($row['has_variants'] ?? 0),
-                'is_active'           => true,
-
-                // Computed: alias from item_group, barcode from item_code
-                'alias'               => $this->makeAlias($itemGroup),
-                'barcode'             => $itemCode,
-
+                'rate'                => $row['price_list_rate'] ?? 0,
+                'pack_rate'           => $row['pack_rate'] ?? null,
+                'is_active'           => 1,
                 'erpnext_modified_at' => $row['modified'] ?? null,
                 'sync_status'         => 'synced',
-                'last_synced_at'      => now(),
+                'last_synced_at'      => $now,
             ];
+
+            $existing = ItemPrice::where('price_list_id', $priceListId)
+                ->where('item_id', $itemId)
+                ->first();
 
             if ($existing) {
                 $existing->update($payload);
                 $updated++;
             } else {
-                Item::create($payload);
+                ItemPrice::create(array_merge($payload, [
+                    'price_list_id' => $priceListId,
+                    'item_id'       => $itemId,
+                ]));
                 $inserted++;
             }
         }
-    });
 
-    return compact('inserted', 'updated');
-}
-
-/**
- * First letter of each word, uppercase.
- * "Summer Collection" → "SC"
- * ""                  → ""
- */
-protected function makeAlias(string $source): string
-{
-    $source = trim($source);
-    if ($source === '') {
-        return '';
-    }
-
-    $words = preg_split('/\s+/', $source);
-    $alias = '';
-
-    foreach ($words as $word) {
-        if ($word === '') {
-            continue;
-        }
-        $alias .= strtoupper($word[0]);
-    }
-
-    return $alias;
-}
-
-protected function syncItemPrices(): array
-{
-    // 1. Pull all Item Price rows from ERPNext (paginated, page size 100).
-    $rows = $this->client->listAll('Item Price', [
-        'fields' => json_encode([
-            'name',
-            'item_code',
-            'price_list',
-            'price_list_rate',
-            'pack_rate',
-            'selling',
-            'modified',
-        ]),
-    ], 100);
-
-    // 2. Pre-load lookup maps — faster than querying inside the loop.
-    $priceListMap = PriceList::query()
-        ->pluck('id', 'erpnext_name')
-        ->all();
-
-    $itemMap = Item::query()
-        ->pluck('id', 'erpnext_item_code')
-        ->all();
-
-    $inserted = 0;
-    $updated  = 0;
-    $skipped  = 0;
-    $now      = now();
-
-    foreach ($rows as $row) {
-        $priceListName = $row['price_list'] ?? null;
-        $itemCode      = $row['item_code']  ?? null;
-
-        if (! $priceListName || ! $itemCode) {
-            $skipped++;
-            continue;
-        }
-
-        if (! isset($priceListMap[$priceListName], $itemMap[$itemCode])) {
-            $skipped++;
-            continue;
-        }
-
-        $priceListId = $priceListMap[$priceListName];
-        $itemId      = $itemMap[$itemCode];
-
-        $payload = [
-            'rate'                => $row['price_list_rate'] ?? 0,
-            'pack_rate'           => $row['pack_rate'] ?? null,
-            'is_active'           => 1,
-            'erpnext_modified_at' => $row['modified'] ?? null,
-            'sync_status'         => 'synced',
-            'last_synced_at'      => $now,
+        return [
+            'inserted' => $inserted,
+            'updated'  => $updated,
         ];
-
-        $existing = ItemPrice::where('price_list_id', $priceListId)
-            ->where('item_id', $itemId)
-            ->first();
-
-        if ($existing) {
-            $existing->update($payload);
-            $updated++;
-        } else {
-            ItemPrice::create(array_merge($payload, [
-                'price_list_id' => $priceListId,
-                'item_id'       => $itemId,
-            ]));
-            $inserted++;
-        }
     }
-
-    return [
-        'inserted' => $inserted,
-        'updated'  => $updated,
-    ];
-}
-   protected function syncCustomers(): array
+    protected function syncCustomers(): array
     {
         $rows = $this->client->listAll('Customer', [
-            'fields'            => '["name","customer_name","customer_type","territory","mobile_no","email_id","modified"]',
+            'fields'            => '["name","customer_name","customer_type","territory","mobile_no","email_id","custom_phone","custom_address","custom_loyalty_code","modified"]',
             'limit_page_length' => 100,
         ]);
 
@@ -343,17 +344,35 @@ protected function syncItemPrices(): array
             foreach ($rows as $row) {
                 $existing = Customer::where('erpnext_customer', $row['name'])->first();
 
+                // Resolve standard vs custom phone
+                $phone = $row['mobile_no'] ?? $row['custom_phone'] ?? null;
+
                 $payload = [
                     'erpnext_customer'    => $row['name'],
                     'customer_name'       => $row['customer_name'] ?? $row['name'],
                     'customer_type'       => $row['customer_type'] ?? null,
-                    'phone'               => $row['mobile_no'] ?? null,
+                    'phone'               => $phone,
                     'email'               => $row['email_id'] ?? null,
+                    'city'                => $row['city'] ?? null,
+                    'loyalty_card_number' => $row['custom_loyalty_code'] ?? null,
                     'is_active'           => true,
                     'erpnext_modified_at' => $row['modified'] ?? null,
                     'sync_status'         => 'synced',
                     'last_synced_at'      => now(),
                 ];
+
+                // SMART SYNC GUARD for Address & Phone
+                // If ERPNext sends null, but we have local data (from cashier edits), 
+                // we DO NOT include the field in the payload. This prevents Eloquent 
+                // from overwriting the local edit with null.
+
+                if (!empty($row['custom_address']) || !$existing) {
+                    $payload['address'] = $row['custom_address'] ?? null;
+                }
+
+                if (!empty($phone) || !$existing) {
+                    $payload['phone'] = $phone;
+                }
 
                 if ($existing) {
                     $existing->update($payload);
