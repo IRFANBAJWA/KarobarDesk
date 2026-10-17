@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import {
+    ChevronLeft,
+    ChevronRight,
+    Plus,
+    RefreshCw,
+    Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/useAuth";
 import ItemPricesTable from "@/modules/item-prices/components/ItemPricesTable";
@@ -9,17 +15,18 @@ import ItemPricesFilters, {
 } from "@/modules/item-prices/components/ItemPricesFilters";
 import EditItemPriceDialog from "@/modules/item-prices/components/EditItemPriceDialog";
 import CreateItemPriceDialog from "@/modules/item-prices/components/CreateItemPriceDialog";
-import { listItemPrices, createItemPrice } from "@/modules/item-prices/api";
+import { listItemPrices } from "@/modules/item-prices/api";
 import { listPriceLists } from "@/modules/price-lists/api";
-import { listItems } from "@/modules/items/api";
+import { pickerAllItems } from "@/modules/items/api";
 import ItemPriceDetailDrawer from "@/modules/item-prices/components/ItemPriceDetailDrawer";
+import UnpricedItemsDialog from "@/modules/item-prices/components/UnpricedItemsDialog";
 
 import type {
     ItemPrice,
     ListItemPricesMeta,
 } from "@/modules/item-prices/types";
 import type { PriceList } from "@/modules/price-lists/types";
-import type { Item } from "@/modules/items/types";
+import type { PickerItem } from "@/modules/items/api";
 
 const PER_PAGE = 50;
 
@@ -32,7 +39,6 @@ export default function ItemPrices() {
     );
 
     const [itemPrices, setItemPrices] = useState<ItemPrice[]>([]);
-
     const [meta, setMeta] = useState<ListItemPricesMeta | null>(null);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -43,11 +49,18 @@ export default function ItemPrices() {
     const [viewItem, setViewItem] = useState<ItemPrice | null>(null);
 
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
-    const [items, setItems] = useState<Item[]>([]);
+    const [items, setItems] = useState<PickerItem[]>([]);
 
     const [editItem, setEditItem] = useState<ItemPrice | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+
+    // New states for the unpriced feature
+    const [unpricedOpen, setUnpricedOpen] = useState(false);
+    const [prefillCreate, setPrefillCreate] = useState<{
+        itemId: number;
+        priceListId: number;
+    } | null>(null);
 
     async function load() {
         setLoading(true);
@@ -83,7 +96,6 @@ export default function ItemPrices() {
     }
 
     useEffect(() => {
-        // Reset to page 1 when filters change
         setPage(1);
     }, [filters]);
 
@@ -92,17 +104,16 @@ export default function ItemPrices() {
     }, [filters, page]);
 
     useEffect(() => {
-        // Load pickers once
         (async () => {
             try {
                 const [plRes, itRes] = await Promise.all([
                     listPriceLists(),
-                    listItems(),
+                    pickerAllItems(),
                 ]);
                 setPriceLists(Array.isArray(plRes?.data) ? plRes.data : []);
                 setItems(Array.isArray(itRes?.data) ? itRes.data : []);
             } catch {
-                // Non-fatal — pickers are optional for editing
+                // Non-fatal
             }
         })();
     }, []);
@@ -124,7 +135,8 @@ export default function ItemPrices() {
 
     function handleCreated(_created: ItemPrice) {
         setToast("Item price created.");
-        // Reload the current page to reflect the new row
+        setCreateOpen(false);
+        setPrefillCreate(null);
         load();
     }
 
@@ -133,7 +145,7 @@ export default function ItemPrices() {
         for (const ip of itemPrices) {
             const g = ip.item_group;
             if (!g) continue;
-            if (g === "Raw Material") continue; // hidden by default (matches Items)
+            if (g === "Raw Material") continue;
             set.add(g);
         }
         return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -179,10 +191,26 @@ export default function ItemPrices() {
                         Refresh
                     </Button>
                     {canEdit && (
-                        <Button onClick={() => setCreateOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add price
-                        </Button>
+                        <>
+                            {/* NEW: Button to open the Unpriced Modal */}
+                            <Button
+                                variant="outline"
+                                onClick={() => setUnpricedOpen(true)}
+                            >
+                                <Search className="mr-2 h-4 w-4" />
+                                Find Unpriced
+                            </Button>
+
+                            <Button
+                                onClick={() => {
+                                    setPrefillCreate(null);
+                                    setCreateOpen(true);
+                                }}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add price
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
@@ -225,8 +253,7 @@ export default function ItemPrices() {
                                 }
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-xs text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:opacity-40"
                             >
-                                <ChevronLeft className="h-3.5 w-3.5" />
-                                Prev
+                                <ChevronLeft className="h-3.5 w-3.5" /> Prev
                             </button>
                             <span className="text-xs text-muted-foreground tabular-nums">
                                 Page {page} of {lastPage}
@@ -239,13 +266,13 @@ export default function ItemPrices() {
                                 }
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-xs text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:opacity-40"
                             >
-                                Next
-                                <ChevronRight className="h-3.5 w-3.5" />
+                                Next <ChevronRight className="h-3.5 w-3.5" />
                             </button>
                         </div>
                     </div>
                 )}
             </div>
+
             <ItemPriceDetailDrawer
                 itemPrice={viewItem}
                 canEdit={canEdit}
@@ -255,18 +282,45 @@ export default function ItemPrices() {
                     setEditItem(ip);
                 }}
             />
+
             <EditItemPriceDialog
                 itemPrice={editItem}
                 onClose={() => setEditItem(null)}
                 onSaved={handleSaved}
             />
 
+            {/* Create Dialog - now accepts prefill values from the Unpriced Modal */}
             <CreateItemPriceDialog
                 open={createOpen}
                 priceLists={priceListOptions}
                 items={itemOptions}
-                onClose={() => setCreateOpen(false)}
+                defaultPriceListId={
+                    prefillCreate?.priceListId
+                        ? String(prefillCreate.priceListId)
+                        : undefined
+                }
+                defaultItemId={
+                    prefillCreate?.itemId
+                        ? String(prefillCreate.itemId)
+                        : undefined
+                }
+                onClose={() => {
+                    setCreateOpen(false);
+                    setPrefillCreate(null);
+                }}
                 onCreated={handleCreated}
+            />
+
+            {/* NEW: Unpriced Items Modal */}
+            <UnpricedItemsDialog
+                open={unpricedOpen}
+                priceLists={priceListOptions}
+                onClose={() => setUnpricedOpen(false)}
+                onAddPrice={(itemId, priceListId) => {
+                    setUnpricedOpen(false);
+                    setPrefillCreate({ itemId, priceListId });
+                    setCreateOpen(true);
+                }}
             />
 
             {toast && (

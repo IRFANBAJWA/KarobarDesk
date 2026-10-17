@@ -192,6 +192,43 @@ class ItemController extends Controller
         ]);
     }
 
+    // Get items that do NOT have a price for the given price_list_id
+    public function unpricedItems(Request $request): JsonResponse
+    {
+        $this->authorizeAdminManager($request);
+
+        $priceListId = $request->integer('price_list_id');
+
+        if (!$priceListId) {
+            return response()->json(['message' => 'Price list is required.'], 422);
+        }
+
+        // Query items that DO NOT have a matching row in item_prices
+        $query = Item::query()
+            ->where('is_active', true)
+            ->whereDoesntHave('itemPrices', function ($q) use ($priceListId) {
+                $q->where('price_list_id', $priceListId);
+            });
+
+        // Add search filter
+        if ($search = $request->string('search')->toString()) {
+            $query->where(function ($q) use ($search) {
+                $q->where('item_name', 'like', "%{$search}%")
+                    ->orWhere('erpnext_item_code', 'like', "%{$search}%");
+            });
+        }
+
+        $paginator = $query->orderBy('item_name')->paginate(50);
+
+        return response()->json([
+            'data' => ItemResource::collection($paginator->items()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ]
+        ]);
+    }
     // ---------------------------------------------------------------------
     // Guard
     // ---------------------------------------------------------------------

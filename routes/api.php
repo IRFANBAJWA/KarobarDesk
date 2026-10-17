@@ -36,13 +36,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/field-permissions/{form}', [FieldPermissionController::class, 'show']);
     Route::post('/company/switch', [CompanySwitchController::class, 'switch'])
         ->middleware('company.access');
-
+    Route::get('/items/unpriced', [ItemController::class, 'unpricedItems']);
     // Items
     Route::get('/items', [ItemController::class, 'index']);
     Route::get('/items/admin',   [ItemController::class, 'listAll']);
     Route::get('/items/picker', [ItemController::class, 'pickerAll']);
     Route::get('/items/{item}',  [ItemController::class, 'show']);
     Route::patch('/items/{item}', [ItemController::class, 'update']);
+
 
     // Price Lists
     Route::get('/price-lists', [PriceListController::class, 'index']);

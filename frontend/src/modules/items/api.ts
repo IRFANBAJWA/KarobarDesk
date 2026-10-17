@@ -6,7 +6,6 @@ import type {
   UpdateItemResponse,
 } from "./types";
 
-// Add this interface
 export interface ListItemsParams {
   page?: number;
   search?: string;
@@ -16,7 +15,6 @@ export interface ListItemsParams {
   hide_internal?: boolean;
 }
 
-// Update the function
 export async function listItems(
   params: ListItemsParams = {},
 ): Promise<PaginatedItemsResponse> {
@@ -46,4 +44,21 @@ export async function updateItem(
     method: "PATCH",
     body: JSON.stringify(payload),
   });
+}
+
+// --- THE MISSING EXPORT IS HERE ---
+export interface PickerItem {
+  id: number;
+  item_name: string;
+  item_code: string;
+  item_group: string | null;
+  is_active: boolean;
+}
+
+export interface PickerItemsResponse {
+  data: PickerItem[];
+}
+
+export async function pickerAllItems(): Promise<PickerItemsResponse> {
+  return apiFetch<PickerItemsResponse>("/api/items/picker");
 }
