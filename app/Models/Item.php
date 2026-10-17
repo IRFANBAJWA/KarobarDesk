@@ -49,7 +49,6 @@ class Item extends Model
             'is_taxable'          => 'boolean',
             'is_active'           => 'boolean',
             'has_variants'        => 'boolean',
-            'woocommerce_id'      => 'integer',
             'erpnext_modified_at' => 'datetime',
             'last_synced_at'      => 'datetime',
         ];

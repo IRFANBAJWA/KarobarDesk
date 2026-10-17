@@ -54,7 +54,10 @@ class Company extends Model
     {
         return $this->hasMany(Account::class);
     }
-
+    public function isFailed(): bool
+    {
+        return $this->sync_status === 'failed';
+    }
     public function itemStocks(): HasMany
     {
         return $this->hasMany(ItemStock::class);

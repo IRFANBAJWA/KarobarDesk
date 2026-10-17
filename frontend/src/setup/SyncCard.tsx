@@ -3,10 +3,7 @@ import { cn } from '@/lib/utils';
 import type { SyncStepMeta } from './syncSteps';
 import type { SyncResult } from '@/types/sync';
 
-type CardState =
-  | { kind: 'idle' }
-  | { kind: 'syncing' }
-  | SyncResult;
+type CardState = { kind: 'idle' } | { kind: 'syncing' } | SyncResult;
 
 interface Props {
   meta: SyncStepMeta;
@@ -18,11 +15,9 @@ interface Props {
 
 export function SyncCard({ meta, count, disabled, state, onSync }: Props) {
   const Icon = meta.icon;
-
   const isIdle = 'kind' in state && state.kind === 'idle';
   const isSyncing = 'kind' in state && state.kind === 'syncing';
-  const result: SyncResult | null =
-    !('kind' in state) ? (state as SyncResult) : null;
+  const result: SyncResult | null = !('kind' in state) ? state : null;
 
   return (
     <button
@@ -31,8 +26,7 @@ export function SyncCard({ meta, count, disabled, state, onSync }: Props) {
       onClick={onSync}
       className={cn(
         'group relative flex flex-col items-start gap-3 rounded-2xl',
-        'border border-white/10 bg-white/5 p-5 text-left',
-        'backdrop-blur-xl transition',
+        'border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition',
         'hover:-translate-y-0.5 hover:bg-white/10',
         'disabled:cursor-not-allowed disabled:opacity-50',
         'disabled:hover:translate-y-0 disabled:hover:bg-white/5',
@@ -44,9 +38,7 @@ export function SyncCard({ meta, count, disabled, state, onSync }: Props) {
           <Icon className="h-4 w-4 text-violet-400" />
           <span className="text-sm font-medium">{meta.label}</span>
         </div>
-        {isSyncing && (
-          <Loader2 className="h-4 w-4 animate-spin text-violet-400" />
-        )}
+        {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-violet-400" />}
       </div>
 
       <div className="space-y-1">

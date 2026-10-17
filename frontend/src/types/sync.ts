@@ -32,13 +32,14 @@ export interface SyncActivityRow {
   created_at: string;
 }
 
-export interface TestErpNextResponse {
+export interface ErpNextLoginResponse {
   ok: boolean;
   user?: string;
   error?: string;
+  token?: string;
 }
 
 export interface ErpNextCredentials {
-    username: '',
-  password: '',
+  username: string;
+  password: string;
 }

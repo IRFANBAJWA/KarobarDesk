@@ -4,48 +4,55 @@ import { GlassCard } from '@/components/glass/GlassCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { testErpNextConnection } from '@/api/sync';
+import { loginToErpNext } from '@/api/sync';
 import type { ErpNextCredentials } from '@/types/sync';
 
 interface Props {
   credentials: ErpNextCredentials;
   onChange: (next: ErpNextCredentials) => void;
-  onTestSuccess: () => void;
+  onConnected: (token: string, user: string) => void;
 }
 
-type TestState =
+type ConnectionState =
   | { kind: 'idle' }
-  | { kind: 'testing' }
+  | { kind: 'connecting' }
   | { kind: 'ok'; user: string }
   | { kind: 'error'; message: string };
 
-export function ConnectionCard({ credentials, onChange, onTestSuccess }: Props) {
+export function ConnectionCard({
+  credentials,
+  onChange,
+  onConnected,
+}: Props) {
   const [showPassword, setShowPassword] = useState(false);
-  const [testState, setTestState] = useState<TestState>({ kind: 'idle' });
+  const [connectionState, setConnectionState] = useState<ConnectionState>({
+    kind: 'idle',
+  });
 
   const user = credentials?.username ?? '';
   const pass = credentials?.password ?? '';
+  const canConnect = user.trim() !== '' && pass !== '';
 
-  const canTest = user.trim() !== '' && pass !== '';
-
-  async function handleTest() {
-    setTestState({ kind: 'testing' });
+  async function handleConnect() {
+    setConnectionState({ kind: 'connecting' });
     try {
-      const res = await testErpNextConnection({
+      const res = await loginToErpNext({
         username: user,
         password: pass,
       });
-      if (res.ok) {
-        setTestState({ kind: 'ok', user: res.user ?? 'unknown' });
-        onTestSuccess();
+
+      if (res.ok && res.token) {
+        const displayUser = res.user ?? 'unknown';
+        setConnectionState({ kind: 'ok', user: displayUser });
+        onConnected(res.token, displayUser);
       } else {
-        setTestState({
+        setConnectionState({
           kind: 'error',
           message: res.error ?? 'Connection failed.',
         });
       }
     } catch (err) {
-      setTestState({
+      setConnectionState({
         kind: 'error',
         message: err instanceof Error ? err.message : 'Connection failed.',
       });
@@ -54,9 +61,11 @@ export function ConnectionCard({ credentials, onChange, onTestSuccess }: Props) 
 
   return (
     <GlassCard className="p-6">
-      <h2 className="text-sm font-semibold tracking-tight">ERPNext Credentials</h2>
+      <h2 className="text-sm font-semibold tracking-tight">
+        ERPNext Credentials
+      </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Used once per request and never stored.
+        Used once per session. Never stored on the server or in the browser.
       </p>
 
       <div className="mt-5 space-y-4">
@@ -65,7 +74,6 @@ export function ConnectionCard({ credentials, onChange, onTestSuccess }: Props) 
             <Label htmlFor="username">Username</Label>
             <Input
               id="username"
-              name="username"
               autoComplete="off"
               value={user}
               onChange={(e) =>
@@ -81,7 +89,6 @@ export function ConnectionCard({ credentials, onChange, onTestSuccess }: Props) 
             <div className="relative">
               <Input
                 id="password"
-                name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="off"
                 value={pass}
@@ -112,31 +119,31 @@ export function ConnectionCard({ credentials, onChange, onTestSuccess }: Props) 
           <Button
             type="button"
             variant="outline"
-            disabled={!canTest || testState.kind === 'testing'}
-            onClick={handleTest}
+            disabled={!canConnect || connectionState.kind === 'connecting'}
+            onClick={handleConnect}
             className="border-white/10"
           >
-            {testState.kind === 'testing' ? (
+            {connectionState.kind === 'connecting' ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Testing…
+                Connecting…
               </>
             ) : (
-              'Test connection'
+              'Connect'
             )}
           </Button>
 
-          {testState.kind === 'ok' && (
+          {connectionState.kind === 'ok' && (
             <span className="flex items-center gap-1.5 text-xs text-emerald-400">
               <CheckCircle2 className="h-4 w-4" />
-              Connected as {testState.user}
+              Connected as {connectionState.user}
             </span>
           )}
 
-          {testState.kind === 'error' && (
+          {connectionState.kind === 'error' && (
             <span className="flex items-center gap-1.5 text-xs text-red-400">
               <AlertCircle className="h-4 w-4" />
-              {testState.message}
+              {connectionState.message}
             </span>
           )}
         </div>

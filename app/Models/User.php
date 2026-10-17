@@ -30,6 +30,7 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
     ];
+    protected $appends = ['erpnext'];
 
     protected $hidden = [
         'password',
@@ -50,7 +51,15 @@ class User extends Authenticatable
             'is_active'              => 'boolean',
         ];
     }
-
+    public function getErpnextAttribute(): array
+    {
+        return [
+            'user'           => $this->erpnext_user,
+            'linked'         => ! empty($this->erpnext_user) && ! empty($this->erpnext_token),
+            'last_tested_at' => $this->erpnext_last_tested_at?->toIso8601String(),
+            'last_error'     => $this->erpnext_last_error,
+        ];
+    }
     // ---------------------------------------------------------------------
     // Relationships
     // ---------------------------------------------------------------------

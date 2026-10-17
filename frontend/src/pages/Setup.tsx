@@ -7,11 +7,7 @@ import { ActivityPanel } from '@/setup/ActivityPanel';
 import { SYNC_STEPS } from '@/setup/syncSteps';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { Button } from '@/components/ui/button';
-import {
-  getSyncActivity,
-  getSyncStatus,
-  runSyncStep,
-} from '@/api/sync';
+import { getSyncActivity, getSyncStatus, syncStep } from '@/api/sync';
 import type {
   ErpNextCredentials,
   SyncActivityRow,
@@ -22,45 +18,43 @@ import type {
 
 type CardState = { kind: 'idle' } | { kind: 'syncing' } | SyncResult;
 
+const EMPTY_CREDENTIALS: ErpNextCredentials = { username: '', password: '' };
+
+const ZERO_COUNTS: Record<SyncStep, number> = {
+  companies: 0,
+  accounts: 0,
+  price_lists: 0,
+  items: 0,
+  item_prices: 0,
+  customers: 0,
+};
+
+const IDLE_STATES: Record<SyncStep, CardState> = {
+  companies: { kind: 'idle' },
+  accounts: { kind: 'idle' },
+  price_lists: { kind: 'idle' },
+  items: { kind: 'idle' },
+  item_prices: { kind: 'idle' },
+  customers: { kind: 'idle' },
+};
+
 export default function Setup() {
   const navigate = useNavigate();
 
-  const [credentials, setCredentials] = useState<ErpNextCredentials>({
-    username: '',
-  password: '',
-  });
-
-  const [connectionVerified, setConnectionVerified] = useState(false);
-  const [counts, setCounts] = useState<Record<SyncStep, number>>({
-    companies: 0,
-    accounts: 0,
-    price_lists: 0,
-    items: 0,
-    item_prices: 0,
-    customers: 0,
-  });
-  const [cardStates, setCardStates] = useState<Record<SyncStep, CardState>>({
-    companies: { kind: 'idle' },
-    accounts: { kind: 'idle' },
-    price_lists: { kind: 'idle' },
-    items: { kind: 'idle' },
-    item_prices: { kind: 'idle' },
-    customers: { kind: 'idle' },
-  });
+  const [credentials, setCredentials] =
+    useState<ErpNextCredentials>(EMPTY_CREDENTIALS);
+  const [erpnextToken, setErpnextToken] = useState<string | null>(null);
+  const [connectedUser, setConnectedUser] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<SyncStep, number>>(ZERO_COUNTS);
+  const [cardStates, setCardStates] =
+    useState<Record<SyncStep, CardState>>(IDLE_STATES);
   const [activity, setActivity] = useState<SyncActivityRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
   const refreshStatus = useCallback(async () => {
     try {
       const res = await getSyncStatus();
-      const next: Record<SyncStep, number> = {
-        companies: 0,
-        accounts: 0,
-        price_lists: 0,
-        items: 0,
-        item_prices: 0,
-        customers: 0,
-      };
+      const next: Record<SyncStep, number> = { ...ZERO_COUNTS };
       res.steps.forEach((row: SyncStatusRow) => {
         next[row.step] = row.count;
       });
@@ -81,28 +75,29 @@ export default function Setup() {
     }
   }, []);
 
-useEffect(() => {
-  let cancelled = false;
-  (async () => {
-    await refreshStatus();
-    if (cancelled) return;
-    await refreshActivity();
-  })();
-  return () => {
-    cancelled = true;
-  };
-}, [refreshStatus, refreshActivity]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await refreshStatus();
+      if (cancelled) return;
+      await refreshActivity();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshStatus, refreshActivity]);
 
   async function handleSync(step: SyncStep) {
+    if (!erpnextToken) return;
+
     setCardStates((s) => ({ ...s, [step]: { kind: 'syncing' } }));
     try {
-      const result = await runSyncStep(step, credentials);
+      const result = await syncStep(step, erpnextToken);
       setCardStates((s) => ({ ...s, [step]: result }));
       await refreshStatus();
       await refreshActivity();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Sync failed.';
+      const message = err instanceof Error ? err.message : 'Sync failed.';
       setCardStates((s) => ({
         ...s,
         [step]: { step, status: 'failed', error: message },
@@ -110,11 +105,13 @@ useEffect(() => {
     }
   }
 
+  const isConnected = erpnextToken !== null;
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 p-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
-          ⚙ Setup & Sync
+          ⚙ Setup &amp; Sync
         </h1>
         <p className="text-sm text-muted-foreground">
           Pull master data from ERPNext. Credentials are used once and never
@@ -125,7 +122,10 @@ useEffect(() => {
       <ConnectionCard
         credentials={credentials}
         onChange={setCredentials}
-        onTestSuccess={() => setConnectionVerified(true)}
+        onConnected={(token, user) => {
+          setErpnextToken(token);
+          setConnectedUser(user);
+        }}
       />
 
       <GlassCard className="p-6">
@@ -138,9 +138,14 @@ useEffect(() => {
               Click any card to sync just that dataset from ERPNext.
             </p>
           </div>
-          {!connectionVerified && (
+          {!isConnected && (
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] text-amber-300">
-              Test connection first
+              Connect to ERPNext first
+            </span>
+          )}
+          {isConnected && connectedUser && (
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] text-emerald-300">
+              Connected · {connectedUser}
             </span>
           )}
         </div>
@@ -151,7 +156,7 @@ useEffect(() => {
               key={meta.step}
               meta={meta}
               count={counts[meta.step]}
-              disabled={!connectionVerified}
+              disabled={!isConnected}
               state={cardStates[meta.step]}
               onSync={() => handleSync(meta.step)}
             />

@@ -26,9 +26,7 @@ export function ActivityPanel({ rows, loading }: Props) {
       {loading ? (
         <p className="mt-3 text-xs text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-3 text-xs text-muted-foreground">
-          No sync activity yet.
-        </p>
+        <p className="mt-3 text-xs text-muted-foreground">No sync activity yet.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {rows.map((row) => {

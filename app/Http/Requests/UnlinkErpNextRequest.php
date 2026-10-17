@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class TestErpNextRequest extends FormRequest
+class UnlinkErpNextRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,8 +14,7 @@ class TestErpNextRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string', 'max:255'],
-            'password' => ['required', 'string'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

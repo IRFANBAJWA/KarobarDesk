@@ -1,11 +1,11 @@
 import { api } from './client';
 import type {
   ErpNextCredentials,
+  ErpNextLoginResponse,
   SyncActivityRow,
   SyncResult,
   SyncStatusResponse,
   SyncStep,
-  TestErpNextResponse,
 } from '@/types/sync';
 
 export async function getSyncStatus(): Promise<SyncStatusResponse> {
@@ -14,21 +14,34 @@ export async function getSyncStatus(): Promise<SyncStatusResponse> {
 }
 
 export async function getSyncActivity(): Promise<SyncActivityRow[]> {
-  const { data } = await api.get<{ activity: SyncActivityRow[] }>('/sync/activity');
+  const { data } = await api.get<{ activity: SyncActivityRow[] }>(
+    '/sync/activity',
+  );
   return data.activity;
 }
 
-export async function testErpNextConnection(
+export async function loginToErpNext(
   credentials: ErpNextCredentials,
-): Promise<TestErpNextResponse> {
-  const { data } = await api.post<TestErpNextResponse>('/sync/test', credentials);
+): Promise<ErpNextLoginResponse> {
+  const { data } = await api.post<ErpNextLoginResponse>(
+    '/sync/login',
+    credentials,
+  );
   return data;
 }
 
-export async function runSyncStep(
+export async function syncStep(
   step: SyncStep,
-  credentials: ErpNextCredentials,
+  token: string,
 ): Promise<SyncResult> {
-  const { data } = await api.post<SyncResult>(`/sync/${step}`, credentials);
+  const { data } = await api.post<SyncResult>(
+    `/sync/${step}`,
+    {},
+    {
+      headers: {
+        'X-ERPNext-Token': token,
+      },
+    },
+  );
   return data;
 }
