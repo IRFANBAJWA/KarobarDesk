@@ -3,12 +3,12 @@
 namespace App\Services\ErpNext;
 
 use Carbon\Carbon;
-
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\ItemPrice;
+use App\Models\ItemStock;
 use App\Models\PriceList;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +28,7 @@ class ErpNextSyncService
                 'items'       => $this->syncItems(),
                 'item_prices' => $this->syncItemPrices(),
                 'customers'   => $this->syncCustomers(),
+                'item_stocks' => $this->syncItemStocks(), // <--- NEW
                 default       => throw ErpNextException::unknownStep($step),
             };
 
@@ -51,8 +52,7 @@ class ErpNextSyncService
     protected function syncCompanies(): array
     {
         $rows = $this->client->listAll('Company', [
-            'fields'            => '["name","company_name","abbr","modified"]',
-            'limit_page_length' => 100,
+            'fields' => '["name","company_name","abbr","modified"]',
         ]);
 
         $inserted = 0;
@@ -88,8 +88,7 @@ class ErpNextSyncService
     protected function syncAccounts(): array
     {
         $rows = $this->client->listAll('Account', [
-            'fields'            => '["name","account_name","account_type","root_type","company","is_group"]',
-            'limit_page_length' => 100,
+            'fields' => '["name","account_name","account_type","root_type","company","is_group"]',
         ]);
 
         $inserted = 0;
@@ -138,8 +137,7 @@ class ErpNextSyncService
     protected function syncPriceLists(): array
     {
         $rows = $this->client->listAll('Price List', [
-            'fields'            => '["name","price_list_name","currency","selling","enabled"]',
-            'limit_page_length' => 100,
+            'fields' => '["name","price_list_name","currency","selling","enabled"]',
         ]);
 
         $inserted = 0;
@@ -147,7 +145,6 @@ class ErpNextSyncService
 
         DB::transaction(function () use ($rows, &$inserted, &$updated) {
             foreach ($rows as $row) {
-                // Skip non-selling price lists
                 if (empty($row['selling'])) {
                     continue;
                 }
@@ -181,7 +178,7 @@ class ErpNextSyncService
     {
         $rows = $this->client->listAll('Item', [
             'fields' => '["name","item_code","item_name","item_group","brand","stock_uom","description","weight_per_unit","weight_uom","is_stock_item","has_variants","variant_of","modified"]',
-        ], 100);
+        ]);
 
         $inserted = 0;
         $updated  = 0;
@@ -206,11 +203,8 @@ class ErpNextSyncService
                     'is_stock_item'       => (bool) ($row['is_stock_item'] ?? 1),
                     'has_variants'        => (bool) ($row['has_variants'] ?? 0),
                     'is_active'           => true,
-
-                    // Computed: alias from item_group, barcode from item_code
                     'alias'               => $this->makeAlias($itemGroup),
                     'barcode'             => $itemCode,
-
                     'erpnext_modified_at' => $row['modified'] ?? null,
                     'sync_status'         => 'synced',
                     'last_synced_at'      => now(),
@@ -229,25 +223,16 @@ class ErpNextSyncService
         return compact('inserted', 'updated');
     }
 
-    /**
-     * First letter of each word, uppercase.
-     * "Summer Collection" → "SC"
-     * ""                  → ""
-     */
     protected function makeAlias(string $source): string
     {
         $source = trim($source);
-        if ($source === '') {
-            return '';
-        }
+        if ($source === '') return '';
 
         $words = preg_split('/\s+/', $source);
         $alias = '';
 
         foreach ($words as $word) {
-            if ($word === '') {
-                continue;
-            }
+            if ($word === '') continue;
             $alias .= strtoupper($word[0]);
         }
 
@@ -256,7 +241,6 @@ class ErpNextSyncService
 
     protected function syncItemPrices(): array
     {
-        // 1. Pull all Item Price rows from ERPNext (paginated, page size 100).
         $rows = $this->client->listAll('Item Price', [
             'fields' => json_encode([
                 'name',
@@ -267,35 +251,21 @@ class ErpNextSyncService
                 'selling',
                 'modified',
             ]),
-        ], 100);
+        ]);
 
-        // 2. Pre-load lookup maps — faster than querying inside the loop.
-        $priceListMap = PriceList::query()
-            ->pluck('id', 'erpnext_name')
-            ->all();
-
-        $itemMap = Item::query()
-            ->pluck('id', 'erpnext_item_code')
-            ->all();
+        $priceListMap = PriceList::query()->pluck('id', 'erpnext_name')->all();
+        $itemMap = Item::query()->pluck('id', 'erpnext_item_code')->all();
 
         $inserted = 0;
         $updated  = 0;
-        $skipped  = 0;
         $now      = now();
 
         foreach ($rows as $row) {
             $priceListName = $row['price_list'] ?? null;
             $itemCode      = $row['item_code']  ?? null;
 
-            if (! $priceListName || ! $itemCode) {
-                $skipped++;
-                continue;
-            }
-
-            if (! isset($priceListMap[$priceListName], $itemMap[$itemCode])) {
-                $skipped++;
-                continue;
-            }
+            if (! $priceListName || ! $itemCode) continue;
+            if (! isset($priceListMap[$priceListName], $itemMap[$itemCode])) continue;
 
             $priceListId = $priceListMap[$priceListName];
             $itemId      = $itemMap[$itemCode];
@@ -325,16 +295,13 @@ class ErpNextSyncService
             }
         }
 
-        return [
-            'inserted' => $inserted,
-            'updated'  => $updated,
-        ];
+        return compact('inserted', 'updated');
     }
+
     protected function syncCustomers(): array
     {
         $rows = $this->client->listAll('Customer', [
-            'fields'            => '["name","customer_name","customer_type","territory","mobile_no","email_id","custom_phone","custom_address","custom_loyalty_code","modified"]',
-            'limit_page_length' => 100,
+            'fields' => '["name","customer_name","customer_type","territory","mobile_no","email_id","custom_phone","custom_address","custom_loyalty_code","modified"]',
         ]);
 
         $inserted = 0;
@@ -343,15 +310,12 @@ class ErpNextSyncService
         DB::transaction(function () use ($rows, &$inserted, &$updated) {
             foreach ($rows as $row) {
                 $existing = Customer::where('erpnext_customer', $row['name'])->first();
-
-                // Resolve standard vs custom phone
                 $phone = $row['mobile_no'] ?? $row['custom_phone'] ?? null;
 
                 $payload = [
                     'erpnext_customer'    => $row['name'],
                     'customer_name'       => $row['customer_name'] ?? $row['name'],
                     'customer_type'       => $row['customer_type'] ?? null,
-                    'phone'               => $phone,
                     'email'               => $row['email_id'] ?? null,
                     'city'                => $row['city'] ?? null,
                     'loyalty_card_number' => $row['custom_loyalty_code'] ?? null,
@@ -360,11 +324,6 @@ class ErpNextSyncService
                     'sync_status'         => 'synced',
                     'last_synced_at'      => now(),
                 ];
-
-                // SMART SYNC GUARD for Address & Phone
-                // If ERPNext sends null, but we have local data (from cashier edits), 
-                // we DO NOT include the field in the payload. This prevents Eloquent 
-                // from overwriting the local edit with null.
 
                 if (!empty($row['custom_address']) || !$existing) {
                     $payload['address'] = $row['custom_address'] ?? null;
@@ -385,5 +344,87 @@ class ErpNextSyncService
         });
 
         return compact('inserted', 'updated');
+    }
+
+    /**
+     * NEW: Sync Stock from ERPNext Bins
+     */
+
+    protected function syncItemStocks(): array
+    {
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        $companies = Company::where('is_active', true)->get();
+
+        // Load item mappings once to avoid querying for every stock row.
+        $items = Item::whereNotNull('erpnext_item_code')
+            ->pluck('id', 'erpnext_item_code');
+
+        DB::transaction(function () use (
+            $companies,
+            $items,
+            &$inserted,
+            &$updated,
+            &$skipped
+        ) {
+            foreach ($companies as $company) {
+                // Get all non-group warehouses for this company.
+                $warehouses = $this->client->listAll('Warehouse', [
+                    'fields' => '["name","company","is_group"]',
+                    'filters' => json_encode([
+                        ['company', '=', $company->name],
+                        ['is_group', '=', 0],
+                    ]),
+                ]);
+
+                foreach ($warehouses as $warehouse) {
+                    $warehouseName = $warehouse['name'];
+
+                    // Fetch stock for every item in this warehouse.
+                    $rows = $this->client->listAll('Bin', [
+                        'fields' => '["item_code","warehouse","actual_qty","stock_uom"]',
+                        'filters' => json_encode([
+                            ['warehouse', '=', $warehouseName],
+                        ]),
+                    ]);
+
+                    foreach ($rows as $row) {
+                        $itemId = $items[$row['item_code']] ?? null;
+
+                        if (!$itemId) {
+                            $skipped++;
+                            continue;
+                        }
+
+                        $qty = (float) $row['actual_qty'];
+
+                        $existing = ItemStock::where('company_id', $company->id)
+                            ->where('warehouse', $warehouseName)
+                            ->where('item_id', $itemId)
+                            ->first();
+
+                        if ($existing) {
+                            if ((float) $existing->qty !== $qty) {
+                                $existing->update(['qty' => $qty]);
+                                $updated++;
+                            }
+                        } else {
+                            ItemStock::create([
+                                'company_id' => $company->id,
+                                'warehouse'  => $warehouseName,
+                                'item_id'    => $itemId,
+                                'qty'        => $qty,
+                            ]);
+
+                            $inserted++;
+                        }
+                    }
+                }
+            }
+        });
+
+        return compact('inserted', 'updated', 'skipped');
     }
 }

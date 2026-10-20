@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\ItemPrice;
+use App\Models\ItemStock; // <--- ADDED
 use App\Models\PriceList;
 use App\Models\SyncLog;
 use App\Services\ErpNext\ErpNextClient;
@@ -29,6 +30,7 @@ class SyncController extends Controller
                 ['step' => 'items',       'count' => Item::count()],
                 ['step' => 'item_prices', 'count' => ItemPrice::count()],
                 ['step' => 'customers',   'count' => Customer::count()],
+                ['step' => 'item_stocks', 'count' => ItemStock::count()], // <--- ADDED
             ],
         ]);
     }
@@ -86,6 +88,7 @@ class SyncController extends Controller
             'items',
             'item_prices',
             'customers',
+            'item_stocks', // <--- ADDED
         ];
 
         if (! in_array($step, $validSteps, true)) {

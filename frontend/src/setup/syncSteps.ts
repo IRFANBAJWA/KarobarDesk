@@ -5,6 +5,7 @@ import {
   Tags,
   Users,
   Wallet,
+  Layers, // <-- ADDED
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { SyncStep } from '@/types/sync';
@@ -46,6 +47,12 @@ export const SYNC_STEPS: SyncStepMeta[] = [
     label: 'Item Prices',
     description: 'Selling rates from each price list',
     icon: Tags,
+  },
+  {
+    step: 'item_stocks', // <-- ADDED
+    label: 'Item Stocks',
+    description: 'Live quantities from Finished Goods warehouses',
+    icon: Layers,
   },
   {
     step: 'customers',

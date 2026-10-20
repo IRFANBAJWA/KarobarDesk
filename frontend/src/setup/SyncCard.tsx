@@ -1,72 +1,71 @@
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { SyncStepMeta } from './syncSteps';
-import type { SyncResult } from '@/types/sync';
-
-type CardState = { kind: 'idle' } | { kind: 'syncing' } | SyncResult;
+import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import type { SyncStepMeta } from "./syncSteps";
+import type { SyncStepResult } from "@/types/sync";
 
 interface Props {
-  meta: SyncStepMeta;
-  count: number;
-  disabled: boolean;
-  state: CardState;
-  onSync: () => void;
+    meta: SyncStepMeta;
+    result?: SyncStepResult;
+    disabled?: boolean;
+    onSync: (step: string) => Promise<void>;
 }
 
-export function SyncCard({ meta, count, disabled, state, onSync }: Props) {
-  const Icon = meta.icon;
-  const isIdle = 'kind' in state && state.kind === 'idle';
-  const isSyncing = 'kind' in state && state.kind === 'syncing';
-  const result: SyncResult | null = !('kind' in state) ? state : null;
+export function SyncCard({ meta, result, disabled, onSync }: Props) {
+    if (!meta) return null;
 
-  return (
-    <button
-      type="button"
-      disabled={disabled || isSyncing}
-      onClick={onSync}
-      className={cn(
-        'group relative flex flex-col items-start gap-3 rounded-2xl',
-        'border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition',
-        'hover:-translate-y-0.5 hover:bg-white/10',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        'disabled:hover:translate-y-0 disabled:hover:bg-white/5',
-        isSyncing && 'border-violet-500/50 ring-2 ring-violet-500/30',
-      )}
-    >
-      <div className="flex w-full items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-violet-400" />
-          <span className="text-sm font-medium">{meta.label}</span>
-        </div>
-        {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-violet-400" />}
-      </div>
+    const Icon = meta.icon;
+    const isLoading = result?.status === "syncing"; // We will pass "syncing" as a status from Setup.tsx
+    const isSuccess = result?.status === "ok";
+    const isError = result?.status === "failed";
 
-      <div className="space-y-1">
-        <p className="text-2xl font-semibold tabular-nums">{count}</p>
-        <p className="text-xs text-muted-foreground">in DB</p>
-      </div>
+    // Entire card is a button. Disable if already syncing or globally disabled.
+    return (
+        <button
+            onClick={() => !isLoading && !disabled && onSync(meta.step)}
+            disabled={disabled || isLoading}
+            className="group flex flex-col text-left rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition hover:bg-white/[0.07] disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+            <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 group-hover:bg-violet-500/20 transition">
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-foreground">
+                        {meta.label}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
+                        {meta.description}
+                    </p>
+                </div>
+            </div>
 
-      <div className="w-full border-t border-white/5 pt-3">
-        {isSyncing ? (
-          <p className="text-xs text-violet-300">Syncing…</p>
-        ) : result?.status === 'ok' ? (
-          <p className="flex items-center gap-1.5 text-xs text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            +{result.inserted ?? 0} new
-            {result.updated ? ` · ${result.updated} updated` : ''}
-            {result.duration_ms ? ` · ${result.duration_ms}ms` : ''}
-          </p>
-        ) : result?.status === 'failed' ? (
-          <p className="flex items-start gap-1.5 text-xs text-red-400">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span className="line-clamp-2">{result.error ?? 'Failed'}</span>
-          </p>
-        ) : isIdle ? (
-          <p className="text-xs text-muted-foreground group-hover:text-foreground">
-            Click to sync
-          </p>
-        ) : null}
-      </div>
-    </button>
-  );
+            <div className="mt-4 flex items-center gap-2 text-xs">
+                {isLoading && (
+                    <span className="flex items-center gap-1.5 text-violet-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Syncing...
+                    </span>
+                )}
+                {isSuccess && (
+                    <span className="flex items-center gap-1 text-emerald-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {result.inserted || 0} in, {result.updated || 0} up
+                    </span>
+                )}
+                {isError && (
+                    <span
+                        className="flex items-center gap-1 text-red-400 truncate"
+                        title={result.error}
+                    >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {result.error || "Failed"}
+                    </span>
+                )}
+                {!isLoading && !isSuccess && !isError && (
+                    <span className="text-muted-foreground group-hover:text-foreground transition">
+                        Not synced
+                    </span>
+                )}
+            </div>
+        </button>
+    );
 }

@@ -11,6 +11,7 @@ import {
     Package,
     Tags,
     DollarSign,
+    Warehouse,
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -52,6 +53,12 @@ const NAV_ITEMS: NavItem[] = [
         roles: ["super_admin", "admin"],
     },
     { label: "Customers", icon: UsersRound, path: "customers" },
+    {
+        label: "Stock",
+        icon: Warehouse,
+        path: "stock",
+        roles: ["super_admin", "admin", "manager"],
+    },
 ];
 
 const STORAGE_KEY = "karobardesk.sidebar.collapsed";

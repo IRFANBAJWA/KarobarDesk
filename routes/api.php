@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\PriceListController;
 use App\Http\Controllers\Api\ItemPriceController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\StockController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,6 +63,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers/admin', [CustomerController::class, 'listAll']);      // MUST be before {customer}
     Route::get('/customers/{customer}', [CustomerController::class, 'show']);
     Route::patch('/customers/{customer}', [CustomerController::class, 'update']);
+
+    Route::prefix('stock')->group(function () {
+        Route::get('/companies', [StockController::class, 'companies']);
+        Route::get('/balances', [StockController::class, 'balances']);
+        Route::get('/ledger/{item}', [StockController::class, 'ledger']);
+    });
 });
 
 Route::middleware(['auth:sanctum', 'super.admin'])->group(function () {
