@@ -12,6 +12,8 @@ import {
     Tags,
     DollarSign,
     Warehouse,
+    CreditCard,
+    Receipt,
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -52,12 +54,24 @@ const NAV_ITEMS: NavItem[] = [
         path: "item-prices",
         roles: ["super_admin", "admin"],
     },
+    {
+        label: "Sales",
+        icon: Receipt,
+        path: "sales",
+        roles: ["super_admin", "admin", "manager"],
+    },
     { label: "Customers", icon: UsersRound, path: "customers" },
     {
         label: "Stock",
         icon: Warehouse,
         path: "stock",
         roles: ["super_admin", "admin", "manager"],
+    },
+    {
+        label: "Till Accounts",
+        icon: CreditCard,
+        path: "till-accounts",
+        roles: ["super_admin", "admin"],
     },
 ];
 

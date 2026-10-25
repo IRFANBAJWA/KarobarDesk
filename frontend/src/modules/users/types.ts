@@ -26,18 +26,23 @@ export interface TillOperationAccount {
 
 export interface TillOperation {
   id: number;
-  erpnext_name: string | null;
-  till_no: number | null;
+  till_no: string;
   shop_name: string | null;
-  shop_code: string | null;
+  address: string | null;
+  phone: string | null;
   warehouse: string | null;
-  price_list: string | null;
+  price_list: string;
+  price_list_id: number;
+  is_online: boolean;
+  allow_rate: boolean;
+  return_pin: number | null;
   erpnext_role: string | null;
-  is_online?: boolean;
-  allow_rate?: boolean;
-  return_pin_set?: boolean;
-  is_active?: boolean;
-  accounts?: TillOperationAccount[];
+  accounts?: {
+    id: number;
+    name: string;
+    erpnext_account: string;
+    is_default: boolean;
+  }[];
 }
 
 export interface ErpNextLink {
@@ -45,6 +50,7 @@ export interface ErpNextLink {
   linked: boolean;
   last_tested_at: string | null;
   last_error: string | null;
+  till_operation?: TillOperation | null;
 }
 
 export interface User {
@@ -116,3 +122,4 @@ export interface LinkErpNextPayload {
   erpnext_user: string;
   erpnext_password: string;
 }
+

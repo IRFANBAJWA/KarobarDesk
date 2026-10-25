@@ -8,6 +8,8 @@ import CreateUserDialog from "@/modules/users/components/CreateUserDialog";
 import EditUserDialog from "@/modules/users/components/EditUserDialog";
 import UserDetailDrawer from "@/modules/users/components/UserDetailDrawer";
 import * as api from "@/modules/users/api";
+import { listPriceLists } from "@/modules/price-lists/api";
+import type { PriceList } from "@/modules/price-lists/types";
 import type {
     Company,
     CreateUserPayload,
@@ -17,7 +19,6 @@ import type {
 } from "@/modules/users/types";
 
 export default function Users() {
-    // --- list state ---
     const [users, setUsers] = useState<User[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -25,6 +26,7 @@ export default function Users() {
     const [perPage] = useState(20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [priceLists, setPriceLists] = useState<PriceList[]>([]);
 
     // --- filters ---
     const [search, setSearch] = useState("");
@@ -45,7 +47,6 @@ export default function Users() {
     // --- toast ---
     const [toast, setToast] = useState<string | null>(null);
 
-    // --- fetch users ---
     const loadUsers = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -71,26 +72,27 @@ export default function Users() {
         loadUsers();
     }, [loadUsers]);
 
-    // --- initial pickers load ---
+    useEffect(() => {
+        listPriceLists()
+            .then((res) => setPriceLists(res.data))
+            .catch(console.error);
+    }, []);
+
     useEffect(() => {
         Promise.all([api.listCompanies(), api.listRoles()])
             .then(([c, r]) => {
                 setCompanies(c.data);
                 setRoles(r.data);
             })
-            .catch(() => {
-                // pickers degrade gracefully if unavailable
-            });
+            .catch(() => {});
     }, []);
 
-    // --- toast auto-dismiss ---
     useEffect(() => {
         if (!toast) return;
         const t = setTimeout(() => setToast(null), 3000);
         return () => clearTimeout(t);
     }, [toast]);
 
-    // --- handlers ---
     async function handleCreate(payload: CreateUserPayload) {
         await api.createUser(payload);
         setCreateOpen(false);
@@ -135,7 +137,6 @@ export default function Users() {
 
     return (
         <div className="mx-auto max-w-[1400px] space-y-6 p-6">
-            {/* Header */}
             <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
                     <h1 className="text-xl font-semibold tracking-tight">
@@ -149,12 +150,10 @@ export default function Users() {
                     onClick={() => setCreateOpen(true)}
                     className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-500 hover:to-indigo-500"
                 >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create user
+                    <Plus className="mr-2 h-4 w-4" /> Create user
                 </Button>
             </div>
 
-            {/* Filters */}
             <UsersFilters
                 search={search}
                 status={status}
@@ -174,14 +173,12 @@ export default function Users() {
                 }}
             />
 
-            {/* Error */}
             {error && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
                     {error}
                 </div>
             )}
 
-            {/* Table card */}
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
                 <UsersTable
                     users={users}
@@ -192,7 +189,6 @@ export default function Users() {
                 />
             </div>
 
-            {/* Pagination */}
             {!loading && users.length > 0 && (
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
@@ -222,7 +218,6 @@ export default function Users() {
                 </div>
             )}
 
-            {/* Dialogs */}
             <CreateUserDialog
                 open={createOpen}
                 onClose={() => setCreateOpen(false)}
@@ -241,22 +236,25 @@ export default function Users() {
                 roles={roles}
                 user={editing}
             />
+
             <UserDetailDrawer
                 open={drawerOpen}
-                onClose={() => {
-                    setDrawerOpen(false);
-                    setViewing(null);
-                }}
+                onClose={() => setDrawerOpen(false)}
                 user={viewing}
-                onUserUpdated={(updated) => {
-                    setViewing(updated);
-                    loadUsers(); // refresh the list so the row shows the new ERPNext status
+                onUserUpdated={(updatedUser) => {
+                    setUsers((prev) =>
+                        prev.map((u) =>
+                            u.id === updatedUser.id ? updatedUser : u,
+                        ),
+                    );
+                    setViewing(updatedUser);
                 }}
+                priceLists={priceLists}
+                onToast={(msg) => setToast(msg)}
             />
 
-            {/* Toast */}
             {toast && (
-                <div className="fixed bottom-6 right-6 z-50 rounded-xl border border-white/10 bg-neutral-900/95 px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
+                <div className="fixed bottom-6 right-6 z-[100] rounded-xl border border-white/10 bg-neutral-900/95 px-4 py-3 text-sm shadow-2xl backdrop-blur-xl">
                     {toast}
                 </div>
             )}

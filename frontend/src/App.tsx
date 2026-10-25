@@ -11,6 +11,8 @@ import PriceLists from "@/pages/PriceLists";
 import ItemPrices from "@/pages/ItemPrices";
 import Customers from "@/pages/Customers";
 import Stock from "@/pages/Stock";
+import TillAccounts from "@/pages/TillAccounts";
+import Sales from "./pages/Sales";
 
 export default function App() {
     return (
@@ -28,6 +30,8 @@ export default function App() {
                     <Route path="/item-prices" element={<ItemPrices />} />
                     <Route path="/customers" element={<Customers />} />
                     <Route path="/stock" element={<Stock />} />
+                    <Route path="/till-accounts" element={<TillAccounts />} />
+                    <Route path="/sales" element={<Sales />} />
                 </Route>
             </Route>
 

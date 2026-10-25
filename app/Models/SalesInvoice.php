@@ -52,6 +52,7 @@ class SalesInvoice extends Model
         'pos_sync_status',
         'pos_erpnext_sync_status',
         'fbr_invoice_reference',
+        'payload_hash',
     ];
 
     protected function casts(): array

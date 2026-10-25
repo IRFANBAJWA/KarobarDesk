@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RetestErpNextRequest;
 use App\Http\Requests\StoreUserRequest;
@@ -37,7 +38,10 @@ class UserController extends Controller
                 'company:id,name,code,erpnext_company',
                 'companies:id,name,code',
                 'roles:id,name,label,is_super_admin',
-                'tillOperation:id,user_id,erpnext_name,till_no,shop_name,shop_code,warehouse,price_list,erpnext_role,is_online,allow_rate,return_pin,is_active',
+                // Load the FULL till operation, plus its relations
+                'tillOperation',
+                'tillOperation.priceList',
+                'tillOperation.accounts',
             ])
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->string('search')->toString();
@@ -78,8 +82,34 @@ class UserController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        // Unhide the return_pin for all users in the list
+        $users->getCollection()->transform(function ($user) {
+            if ($user->tillOperation) {
+                $user->tillOperation->makeVisible('return_pin');
+            }
+            return $user;
+        });
+
         return response()->json($users);
     }
+
+    // public function show(User $user): JsonResponse
+    // {
+    //     $user->load([
+    //         'company:id,name,code,erpnext_company',
+    //         'companies:id,name,code',
+    //         'roles:id,name,label,description,is_super_admin',
+    //         'tillOperation',
+    //         'tillOperation.priceList',
+    //         'tillOperation.accounts',
+    //     ]);
+
+    //     if ($user->tillOperation) {
+    //         $user->tillOperation->makeVisible('return_pin');
+    //     }
+
+    //     return response()->json(['data' => $user]);
+    // }
 
     // ---------------------------------------------------------------------
     // SHOW
@@ -94,6 +124,10 @@ class UserController extends Controller
             'tillOperation',
             'tillOperation.accounts',
         ]);
+
+        if ($user->tillOperation) {
+            $user->tillOperation->makeVisible('return_pin');
+        }
 
         return response()->json(['data' => $user]);
     }
@@ -478,6 +512,61 @@ class UserController extends Controller
         return response()->json([
             'data'    => $user,
             'message' => 'ERPNext link removed.',
+        ]);
+    }
+
+
+    public function updateTill(Request $request, User $user): JsonResponse
+    {
+        $request->validate([
+            'till_no' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:100',
+                Rule::unique('till_operations', 'till_no')
+                    ->where('company_id', $user->company_id)
+                    ->ignore($user->tillOperation?->id)
+            ],
+            'price_list_id' => 'required|exists:price_lists,id',
+            'shop_name' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:1000',
+            'phone' => 'nullable|string|max:50',
+            'is_online' => 'required|boolean',
+            'allow_rate' => 'required|boolean',
+            'return_pin' => 'nullable|integer|min:1000|max:9999',
+        ]);
+
+        $till = $user->tillOperation;
+        if (!$till) {
+            return response()->json(['message' => 'User does not have a till operation.'], 404);
+        }
+
+        $till->update([
+            'till_no' => $request->till_no,
+            'price_list_id' => $request->price_list_id,
+            'shop_name' => $request->shop_name,
+            'address' => $request->address,
+            'phone' => $request->phone,
+            'is_online' => $request->is_online,
+            'allow_rate' => $request->allow_rate,
+            'return_pin' => $request->return_pin,
+        ]);
+
+        // Reload the relations using the $user variable
+        $user->load([
+            'tillOperation.priceList',
+            'tillOperation.accounts'
+        ]);
+
+        // Unhide the return_pin so the UI can see it
+        if ($user->tillOperation) {
+            $user->tillOperation->makeVisible('return_pin');
+        }
+
+        return response()->json([
+            'message' => 'Till operation updated.',
+            'data' => $user,
         ]);
     }
 }

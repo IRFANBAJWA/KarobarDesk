@@ -28,7 +28,6 @@ class StockController extends Controller
         $from = $request->string('date_from')->toString() ?: now()->format('Y-m-d');
         $to = $request->string('date_to')->toString() ?: now()->format('Y-m-d');
 
-        // 1. Get the hide_zero boolean from the request (default to true)
         $hideZero = $request->boolean('hide_zero', true);
 
         $query = ItemStock::query()
@@ -45,7 +44,6 @@ class StockController extends Controller
             });
         }
 
-        // 2. Apply the Zero filter in the SQL query BEFORE pagination
         if ($hideZero) {
             $query->where('qty', '!=', 0);
         }
@@ -53,7 +51,6 @@ class StockController extends Controller
         $paginator = $query->orderByDesc('id')->paginate(50);
 
         $data = collect($paginator->items())->map(function ($stock) use ($from, $to) {
-            // ... (keep the existing mapping logic for opening/in/out/closing)
             $closing = (float) $stock->qty;
             $movements = StockLedger::where('item_id', $stock->item_id)
                 ->where('warehouse', $stock->warehouse)
@@ -84,7 +81,6 @@ class StockController extends Controller
                 'current_page' => $paginator->currentPage(),
                 'last_page'    => $paginator->lastPage(),
                 'total'        => $paginator->total(),
-
             ]
         ]);
     }
@@ -96,10 +92,8 @@ class StockController extends Controller
         $from = $request->string('date_from')->toString();
         $to = $request->string('date_to')->toString();
 
-        // 1. Default opening balance to 0
         $openingBalance = 0.0;
 
-        // 2. Calculate Opening Balance (before the 'from' date)
         if ($from) {
             $openingEntry = StockLedger::query()
                 ->where('item_id', $itemId)
@@ -113,9 +107,13 @@ class StockController extends Controller
             }
         }
 
-        // 3. Main Query for the Ledger Table
+        // ⭐ MODIFIED: Added 'reference' to eager load the SalesInvoice details
         $query = StockLedger::query()
-            ->with(['company:id,name', 'createdBy:id,name'])
+            ->with([
+                'company:id,name',
+                'createdBy:id,name',
+                'reference:id,invoice_number' // Loads invoice_number from sales_invoices
+            ])
             ->where('item_id', $itemId);
 
         if ($warehouse) {
@@ -130,7 +128,6 @@ class StockController extends Controller
 
         $paginator = $query->orderByDesc('id')->paginate(50);
 
-        // 4. Calculate Closing Balance
         $closingBalance = $openingBalance;
         if ($paginator->count() > 0) {
             $closingBalance = (float) $paginator->items()[0]->balance_after;
@@ -147,8 +144,8 @@ class StockController extends Controller
             ]
         ]);
     }
-    // In App\Http\Controllers\Api\StockController.php
 
+    // 4. Companies list
     public function companies(): JsonResponse
     {
         $companies = \App\Models\Company::where('is_active', true)

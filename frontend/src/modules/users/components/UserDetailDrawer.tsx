@@ -11,6 +11,12 @@ import {
     Tag,
     RefreshCw,
     Unlink,
+    Pencil,
+    Phone,
+    MapPin,
+    KeyRound,
+    Wifi,
+    WifiOff,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,14 +25,17 @@ import UserRolesBadges from "./UserRolesBadges";
 import UserStatusBadge from "./UserStatusBadge";
 import ErpNextBadge from "./ErpNextBadge";
 import LinkErpNextDialog from "./LinkErpNextDialog";
+import EditTillDialog from "./EditTillDialog";
 import * as api from "../api";
-import type { User } from "../types";
+import type { User, PriceList } from "../types";
 
 interface Props {
     open: boolean;
     onClose: () => void;
     user: User | null;
     onUserUpdated?: (user: User) => void;
+    priceLists?: PriceList[];
+    onToast?: (message: string) => void;
 }
 
 export default function UserDetailDrawer({
@@ -34,8 +43,11 @@ export default function UserDetailDrawer({
     onClose,
     user,
     onUserUpdated,
+    priceLists = [],
+    onToast,
 }: Props) {
     const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+    const [editTillOpen, setEditTillOpen] = useState(false);
     const [current, setCurrent] = useState<User | null>(user);
     const [unlinking, setUnlinking] = useState(false);
     const [unlinkError, setUnlinkError] = useState<string | null>(null);
@@ -67,6 +79,16 @@ export default function UserDetailDrawer({
     function handleLinkSuccess(updated: User) {
         setCurrent(updated);
         onUserUpdated?.(updated);
+    }
+
+    function handleTillSaved(updated: User) {
+        setCurrent(updated);
+        onUserUpdated?.(updated);
+        setEditTillOpen(false);
+
+        if (onToast) {
+            onToast("Till operation updated successfully.");
+        }
     }
 
     async function handleUnlink() {
@@ -251,9 +273,17 @@ export default function UserDetailDrawer({
                         {/* Till operation card */}
                         {linked && till && (
                             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                                <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                    Till Operation
-                                </p>
+                                <div className="mb-3 flex items-center justify-between">
+                                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                        Till Operation
+                                    </p>
+                                    <button
+                                        onClick={() => setEditTillOpen(true)}
+                                        className="inline-flex h-6 items-center gap-1 rounded bg-violet-500/10 px-2 text-[10px] font-medium text-violet-400 hover:bg-violet-500/20"
+                                    >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                    </button>
+                                </div>
 
                                 <div className="space-y-2 text-sm">
                                     <InfoLine
@@ -280,8 +310,82 @@ export default function UserDetailDrawer({
                                     <InfoLine
                                         icon={<Tag className="h-3.5 w-3.5" />}
                                         label="Price list"
-                                        value={till.price_list}
+                                        value={
+                                            typeof till.price_list ===
+                                                "object" &&
+                                            till.price_list !== null
+                                                ? (till.price_list as any).name
+                                                : till.price_list
+                                        }
                                     />
+                                    <InfoLine
+                                        icon={<Phone className="h-3.5 w-3.5" />}
+                                        label="Phone"
+                                        value={till.phone}
+                                    />
+                                    <InfoLine
+                                        icon={
+                                            <MapPin className="h-3.5 w-3.5" />
+                                        }
+                                        label="Address"
+                                        value={till.address}
+                                    />
+                                    <InfoLine
+                                        icon={
+                                            <KeyRound className="h-3.5 w-3.5" />
+                                        }
+                                        label="Return PIN"
+                                        value={
+                                            till.return_pin !== null
+                                                ? String(till.return_pin)
+                                                : null
+                                        }
+                                    />
+
+                                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-white/5">
+                                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                                            {till.is_online ? (
+                                                <Wifi className="h-3.5 w-3.5" />
+                                            ) : (
+                                                <WifiOff className="h-3.5 w-3.5" />
+                                            )}
+                                            <span className="text-[11px] uppercase tracking-wider">
+                                                Status
+                                            </span>
+                                        </span>
+                                        <span
+                                            className={cn(
+                                                "text-xs font-medium",
+                                                till.is_online
+                                                    ? "text-emerald-400"
+                                                    : "text-red-400",
+                                            )}
+                                        >
+                                            {till.is_online
+                                                ? "Online"
+                                                : "Offline"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                                            <Tag className="h-3.5 w-3.5" />
+                                            <span className="text-[11px] uppercase tracking-wider">
+                                                Allow Rate
+                                            </span>
+                                        </span>
+                                        <span
+                                            className={cn(
+                                                "text-xs font-medium",
+                                                till.allow_rate
+                                                    ? "text-emerald-400"
+                                                    : "text-muted-foreground",
+                                            )}
+                                        >
+                                            {till.allow_rate
+                                                ? "Allowed"
+                                                : "Locked"}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {till.accounts && till.accounts.length > 0 && (
@@ -320,6 +424,14 @@ export default function UserDetailDrawer({
                 onClose={() => setLinkDialogOpen(false)}
                 onSuccess={handleLinkSuccess}
                 user={current}
+            />
+
+            <EditTillDialog
+                open={editTillOpen}
+                user={current}
+                priceLists={priceLists}
+                onClose={() => setEditTillOpen(false)}
+                onSaved={handleTillSaved}
             />
         </>
     );

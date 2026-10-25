@@ -63,16 +63,14 @@ class StockLedger extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /*
-     * Reference resolution note:
-     *
-     * `reference_type` uses short strings — 'sale', 'return',
-     * 'purchase_receipt', 'adjustment', 'transfer', 'opening' (Section 20).
-     *
-     * No `reference()` relationship is defined here by design.
-     * If polymorphic eager-loading is needed later, register a morph map
-     * in AppServiceProvider::boot() and add a `reference()` morphTo method.
+    /**
+     * Link to the SalesInvoice for sales and returns.
+     * Allows the Stock Drawer to show the invoice number.
      */
+    public function reference(): BelongsTo
+    {
+        return $this->belongsTo(SalesInvoice::class, 'reference_id');
+    }
 
     // ---------------------------------------------------------------------
     // Scopes

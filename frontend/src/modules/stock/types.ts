@@ -22,18 +22,19 @@ export interface StockBalance {
 }
 
 export interface StockLedger {
-  id: number;
-  company_id: number;
-  company: StockCompany;
-  warehouse: string;
-  item_id: number;
-  item: StockItem;
-  qty: string;
-  balance_after: string;
-  reference_type: string;
-  reference_id: number | null;
-  notes: string | null;
-  created_at: string;
+    id: number;
+    qty: string;
+    balance_after: string;
+    reference_type: string | null;
+    created_at: string;
+    createdBy?: {
+        id: number;
+        name: string;
+    } | null;
+    reference?: {
+        id: number;
+        invoice_number: string;
+    } | null;
 }
 
 export interface PaginationMeta {

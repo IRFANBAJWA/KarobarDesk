@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, X, Calendar } from "lucide-react";
+import { Loader2, X, Calendar, User, Receipt } from "lucide-react";
 import { listStockLedger } from "../api";
 import type { StockLedger, LedgerMeta } from "../types";
 
@@ -139,14 +139,41 @@ export default function StockLedgerDrawer({
                                         <div
                                             className={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-neutral-950 ${isPositive ? "bg-emerald-500" : "bg-red-500"}`}
                                         />
+
+                                        {/* Date */}
                                         <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
                                             {new Date(
                                                 entry.created_at,
                                             ).toLocaleString()}
                                         </div>
-                                        <div className="text-sm text-foreground flex justify-between">
-                                            <span className="truncate pr-4">
+
+                                        {/* Reference & User Details */}
+                                        <div className="mb-2 mt-1 space-y-1">
+                                            {entry.reference
+                                                ?.invoice_number && (
+                                                <div className="flex items-center gap-1.5 text-xs text-foreground">
+                                                    <Receipt className="h-3 w-3 text-muted-foreground" />
+                                                    <span className="font-medium">
+                                                        {
+                                                            entry.reference
+                                                                .invoice_number
+                                                        }
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                <User className="h-3 w-3" />
+                                                <span>
+                                                    {entry.created_by?.name ||
+                                                        "System"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Qty & Balance */}
+                                        <div className="text-sm text-foreground flex justify-between bg-white/[0.03] p-2 rounded-md border border-white/5">
+                                            <span className="truncate pr-4 capitalize">
                                                 {entry.reference_type ||
                                                     "Adjustment"}
                                             </span>
@@ -157,7 +184,7 @@ export default function StockLedgerDrawer({
                                                 {Number(entry.qty).toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                        <div className="text-xs text-muted-foreground mt-2 text-right">
                                             Bal:{" "}
                                             {Number(
                                                 entry.balance_after,
