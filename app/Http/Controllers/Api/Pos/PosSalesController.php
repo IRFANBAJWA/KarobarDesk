@@ -12,6 +12,7 @@ use App\Models\TillOperation;
 use App\Services\Pos\SalePayloadNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\SyncSalesInvoiceToErpNextJob;
 
 class PosSalesController extends Controller
 {
@@ -111,7 +112,7 @@ class PosSalesController extends Controller
 
                 return $invoice;
             }, 3);
-
+            SyncSalesInvoiceToErpNextJob::dispatch($invoice);
             return response()->json(['message' => 'Sale processed.', 'data' => $invoice->load('items', 'payments')], 201);
         } catch (\RuntimeException $e) {
             if ($persistOnStockFailure) {

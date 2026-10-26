@@ -11,6 +11,7 @@ use App\Models\TillOperation;
 use App\Services\Pos\SalePayloadNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\SyncSalesInvoiceToErpNextJob;
 
 class PosReturnsController extends Controller
 {
@@ -113,6 +114,7 @@ class PosReturnsController extends Controller
 
                 return $return;
             }, 3);
+            // SyncSalesInvoiceToErpNextJob::dispatch($return);
 
             return response()->json(['message' => 'Return processed.', 'data' => $return->load('items', 'payments')], 201);
         } catch (\Throwable $e) {
