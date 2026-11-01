@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Receipt, CreditCard, User } from "lucide-react";
+import { X, Loader2, Receipt, CreditCard, User, RefreshCw } from "lucide-react";
 import { getSale } from "../api";
 import type { SaleDetail } from "../types";
+import SyncStatusBadge from "@/components/badges/SyncStatusBadge"; // ⭐ Import the badge
 
 export default function SaleDetailDrawer({
     saleId,
@@ -112,6 +113,43 @@ export default function SaleDetailDrawer({
                                         </p>
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* ⭐ NEW: ERPNext Sync Status ⭐ */}
+                            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4">
+                                <h3 className="text-sm font-medium text-foreground">
+                                    ERPNext Sync
+                                </h3>
+
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        Status
+                                    </span>
+                                    <SyncStatusBadge
+                                        status={sale.sync_status}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        Reference
+                                    </span>
+                                    <span className="font-mono text-xs text-foreground">
+                                        {sale.erpnext_invoice_reference || "—"}
+                                    </span>
+                                </div>
+
+                                {sale.sync_status === "failed" &&
+                                    sale.sync_error && (
+                                        <div className="rounded-lg bg-red-500/10 p-3 text-xs text-red-400 border border-red-500/20">
+                                            <p className="font-semibold mb-1">
+                                                Error Details:
+                                            </p>
+                                            <p className="opacity-90">
+                                                {sale.sync_error}
+                                            </p>
+                                        </div>
+                                    )}
                             </div>
 
                             {/* Payments List */}

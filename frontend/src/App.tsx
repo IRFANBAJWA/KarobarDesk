@@ -13,6 +13,9 @@ import Customers from "@/pages/Customers";
 import Stock from "@/pages/Stock";
 import TillAccounts from "@/pages/TillAccounts";
 import Sales from "./pages/Sales";
+import QueueMonitor from "./pages/QueueMonitor";
+import Shifts from "./pages/Shifts";
+import DayClosings from "./pages/DayClosings";
 
 export default function App() {
     return (
@@ -32,6 +35,9 @@ export default function App() {
                     <Route path="/stock" element={<Stock />} />
                     <Route path="/till-accounts" element={<TillAccounts />} />
                     <Route path="/sales" element={<Sales />} />
+                    <Route path="/queue-monitor" element={<QueueMonitor />} />
+                    <Route path="/shifts" element={<Shifts />} />
+                    <Route path="/day-closings" element={<DayClosings />} />
                 </Route>
             </Route>
 

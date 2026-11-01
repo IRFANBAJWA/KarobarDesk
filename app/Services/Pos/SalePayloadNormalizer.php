@@ -132,6 +132,7 @@ class SalePayloadNormalizer
             'status'            => $status,
             'invoice_date'      => $data['invoice_date'] ?? now()->toDateString(),
             'invoice_time'      => $data['invoice_time'] ?? now()->toTimeString(),
+            'working_date'      => $data['working_date'] ?? now()->toDateString(),
             'subtotal'          => $subtotal,
             'discount_amount'   => $discountAmount,
             'grand_total'       => $grandTotal,

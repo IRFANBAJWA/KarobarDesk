@@ -79,3 +79,27 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm; /* Standard thermal printer width */
+    margin: 0;
+    padding: 5mm;
+    font-family: 'Courier New', Courier, monospace; /* Monospace for receipt look */
+    color: black;
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

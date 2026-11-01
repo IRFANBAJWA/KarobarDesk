@@ -1,5 +1,6 @@
 import type { SaleInvoice } from "../types";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye } from "lucide-react";
+import SyncStatusBadge from "@/components/badges/SyncStatusBadge"; // ⭐ Import the generic badge
 
 interface Props {
     data: SaleInvoice[];
@@ -19,6 +20,11 @@ export default function SalesTable({ data, loading, onView }: Props) {
                         <th className="px-6 py-3 font-medium">Cashier</th>
                         <th className="px-6 py-3 font-medium">Total</th>
                         <th className="px-6 py-3 font-medium">Status</th>
+
+                        {/* ⭐ NEW COLUMNS ⭐ */}
+                        <th className="px-6 py-3 font-medium">ERPNext Sync</th>
+                        <th className="px-6 py-3 font-medium">ERPNext Ref</th>
+
                         <th className="px-6 py-3 text-right font-medium">
                             Actions
                         </th>
@@ -29,7 +35,8 @@ export default function SalesTable({ data, loading, onView }: Props) {
                         // ⭐ LOADING SKELETON ROWS ⭐
                         Array.from({ length: 5 }).map((_, i) => (
                             <tr key={i} className="border-b border-white/5">
-                                <td colSpan={7} className="px-6 py-4">
+                                {/* Updated colSpan from 7 to 9 to match new columns */}
+                                <td colSpan={9} className="px-6 py-4">
                                     <div className="h-6 animate-pulse rounded bg-white/5 w-full" />
                                 </td>
                             </tr>
@@ -37,7 +44,7 @@ export default function SalesTable({ data, loading, onView }: Props) {
                     ) : data.length === 0 ? (
                         <tr>
                             <td
-                                colSpan={7}
+                                colSpan={9} // Updated colSpan from 7 to 9
                                 className="px-6 py-16 text-center text-muted-foreground"
                             >
                                 No transactions found for this filter.
@@ -77,6 +84,19 @@ export default function SalesTable({ data, loading, onView }: Props) {
                                         {sale.status.toUpperCase()}
                                     </span>
                                 </td>
+
+                                {/* ⭐ ERPNext Sync Badge ⭐ */}
+                                <td className="px-6 py-4">
+                                    <SyncStatusBadge
+                                        status={sale.sync_status}
+                                    />
+                                </td>
+
+                                {/* ⭐ ERPNext Reference ⭐ */}
+                                <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
+                                    {sale.erpnext_invoice_reference || "—"}
+                                </td>
+
                                 <td className="px-6 py-4 text-right">
                                     <button
                                         onClick={() => onView(sale.id)}

@@ -16,7 +16,7 @@ class StorePosReturnRequest extends FormRequest
         return [
             'client_request_id' => ['required', 'string', 'max:100'],
             'invoice_number'    => ['required', 'string', 'max:50'],
-
+            'working_date'      => ['nullable', 'date'],
             // Optional: If provided, validates against original. If null/empty, processes Blind.
             'original_client_request_id' => ['nullable', 'string', 'max:100'],
             'return_reason'     => ['nullable', 'string'],

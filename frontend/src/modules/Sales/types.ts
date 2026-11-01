@@ -10,6 +10,9 @@ export interface SaleInvoice {
     created_at: string;
     customer: { customer_name: string; phone: string } | null;
     user: { name: string };
+      sync_status: "pending" | "synced" | "failed" | null;
+    erpnext_invoice_reference: string | null;
+    sync_error: string | null;
 }
 
 export interface SaleDetail extends SaleInvoice {

@@ -18,6 +18,7 @@ class StorePosSaleRequest extends FormRequest
             'invoice_number'    => ['required', 'string', 'max:50'],
             'invoice_date'      => ['nullable', 'date'],
             'invoice_time'      => ['nullable', 'date_format:H:i:s'],
+            'working_date'      => ['nullable', 'date'],
 
             'customer'          => ['nullable', 'array'],
             'customer.phone'    => ['required_with:customer', 'string', 'max:50'],

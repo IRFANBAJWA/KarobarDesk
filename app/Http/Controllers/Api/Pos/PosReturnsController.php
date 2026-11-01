@@ -114,7 +114,7 @@ class PosReturnsController extends Controller
 
                 return $return;
             }, 3);
-            // SyncSalesInvoiceToErpNextJob::dispatch($return);
+            SyncSalesInvoiceToErpNextJob::dispatch($return);
 
             return response()->json(['message' => 'Return processed.', 'data' => $return->load('items', 'payments')], 201);
         } catch (\Throwable $e) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Auth\MeController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CompanySwitchController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DayClosingController;
 use App\Http\Controllers\Api\FieldPermissionController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\ItemPriceController;
@@ -22,6 +23,10 @@ use App\Http\Controllers\Api\TillAccountController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SalesController; // Add this
+use App\Http\Controllers\Api\ShiftController;
+use App\Http\Controllers\Api\QueueMonitorController;
+use App\Http\Controllers\Api\PosShiftController;
+
 
 Route::get('/health', fn() => response()->json(['ok' => true]));
 Route::post('/login', [LoginController::class, 'login']);
@@ -40,6 +45,8 @@ Route::prefix('pos')->group(function () {
         Route::put('/rejected-sales/{id}', [PosRejectedSalesController::class, 'update']);
         Route::post('/sync/items',  [PosSyncController::class, 'items']);
         Route::post('/sync/stocks', [PosSyncController::class, 'stocks']);
+        Route::post('/shifts/sync', [PosShiftController::class, 'sync']);
+
         // REMOVED the SalesController routes from here
     });
 });
@@ -64,8 +71,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/items/picker', [ItemController::class, 'pickerAll']);
     Route::get('/items/{item}', [ItemController::class, 'show']);
 
-    // ... (the rest of your SPA routes remain the same) ...
-
     // Stock
     Route::prefix('stock')->group(function () {
         Route::get('/companies', [StockController::class, 'companies']);
@@ -80,6 +85,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{user}', [TillAccountController::class, 'show']);
         Route::post('/{user}', [TillAccountController::class, 'update']);
     });
+
+    Route::get('/shifts', [ShiftController::class, 'index']);
+    Route::get('/shifts/{shift}', [ShiftController::class, 'show']);
+
+    // Day Closing
+    Route::get('/day-closings', [DayClosingController::class, 'index']);
+    Route::get('/day-closings/{id}', [DayClosingController::class, 'show']);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -128,4 +140,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->group(function () {
 
     // Customers — admin list
     Route::get('/customers/admin', [CustomerController::class, 'listAll']);
+
+    Route::get('/admin/queue/stats', [QueueMonitorController::class, 'stats']);
+    Route::post('/admin/queue/retry-job/{uuid}', [QueueMonitorController::class, 'retryFailedJob']);
+    Route::post('/admin/queue/retry-invoice/{invoice}', [QueueMonitorController::class, 'retryInvoice']);
 });

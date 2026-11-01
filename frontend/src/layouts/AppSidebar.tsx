@@ -14,6 +14,9 @@ import {
     Warehouse,
     CreditCard,
     Receipt,
+    Activity,
+    Clock,
+    CalendarDays,
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -73,6 +76,19 @@ const NAV_ITEMS: NavItem[] = [
         path: "till-accounts",
         roles: ["super_admin", "admin"],
     },
+    {
+        label: "Queue Monitor",
+        icon: Activity,
+        path: "queue-monitor",
+        roles: ["super_admin"],
+    },
+    {
+        label: "Shifts",
+        icon: Clock,
+        path: "shifts",
+        roles: ["super_admin", "admin", "manager"],
+    },
+    { label: "Day Closings", icon: CalendarDays, path: "day-closings" },
 ];
 
 const STORAGE_KEY = "karobardesk.sidebar.collapsed";
