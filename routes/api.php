@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\Auth\MeController;
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CompanySwitchController;
 use App\Http\Controllers\Api\CustomerController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Api\SalesController; // Add this
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\QueueMonitorController;
 use App\Http\Controllers\Api\PosShiftController;
+use App\Http\Controllers\Api\JournalEntryController;
 
 
 Route::get('/health', fn() => response()->json(['ok' => true]));
@@ -92,6 +94,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Day Closing
     Route::get('/day-closings', [DayClosingController::class, 'index']);
     Route::get('/day-closings/{id}', [DayClosingController::class, 'show']);
+    Route::get('/journal-entries', [JournalEntryController::class, 'index']);
+    Route::get('/journal-entries/{journalEntry}', [JournalEntryController::class, 'show']);
+    Route::post('/journal-entries', [JournalEntryController::class, 'store']);
+    Route::get('/accounts', [AccountController::class, 'index']);
 });
 
 // ─────────────────────────────────────────────────────────────

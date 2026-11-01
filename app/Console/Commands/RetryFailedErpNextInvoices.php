@@ -3,20 +3,25 @@
 namespace App\Console\Commands;
 
 use App\Models\SalesInvoice;
+use App\Models\JournalEntry;
 use App\Jobs\SyncSalesInvoiceToErpNextJob;
+use App\Jobs\SyncJournalEntryToErpNextJob; // ⭐ Import the new Job
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class RetryFailedErpNextInvoices extends Command
 {
-    // This is the command you will run in the terminal
     protected $signature = 'erp:retry-failed';
-
-    protected $description = 'Finds permanently failed ERPNext invoices and pushes them back to the queue';
+    protected $description = 'Finds permanently failed ERPNext records and pushes them back to the queue';
 
     public function handle()
     {
-        // Find invoices that failed in the last 24 hours (so we don't retry ancient ones forever)
+        $this->retryInvoices();
+        $this->retryJournalEntries(); // ⭐ Add Journal Entries to the safety net
+    }
+
+    private function retryInvoices()
+    {
         $failedInvoices = SalesInvoice::where('sync_status', 'failed')
             ->where('updated_at', '>=', now()->subHours(24))
             ->get();
@@ -27,17 +32,29 @@ class RetryFailedErpNextInvoices extends Command
         }
 
         foreach ($failedInvoices as $invoice) {
-            // 1. Reset status to pending so the Job's first check passes
-            $invoice->update([
-                'sync_status' => 'pending',
-                'sync_error' => null,
-            ]);
-
-            // 2. Push back to the queue
+            $invoice->update(['sync_status' => 'pending', 'sync_error' => null]);
             SyncSalesInvoiceToErpNextJob::dispatch($invoice);
-
             $this->info("Pushed Invoice {$invoice->invoice_number} back to queue.");
             Log::info("Safety Net: Pushed failed Invoice {$invoice->invoice_number} back to queue.");
+        }
+    }
+
+    private function retryJournalEntries()
+    {
+        $failedJVs = JournalEntry::where('sync_status', 'failed')
+            ->where('updated_at', '>=', now()->subHours(24))
+            ->get();
+
+        if ($failedJVs->isEmpty()) {
+            $this->info('No failed Journal Entries found to retry.');
+            return;
+        }
+
+        foreach ($failedJVs as $jv) {
+            $jv->update(['sync_status' => 'pending', 'sync_error' => null]);
+            SyncJournalEntryToErpNextJob::dispatch($jv);
+            $this->info("Pushed Journal Entry {$jv->entry_number} back to queue.");
+            Log::info("Safety Net: Pushed failed Journal Entry {$jv->entry_number} back to queue.");
         }
     }
 }

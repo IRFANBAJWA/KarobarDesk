@@ -16,6 +16,7 @@ import Sales from "./pages/Sales";
 import QueueMonitor from "./pages/QueueMonitor";
 import Shifts from "./pages/Shifts";
 import DayClosings from "./pages/DayClosings";
+import JournalEntries from "./pages/JournalEntries";
 
 export default function App() {
     return (
@@ -38,6 +39,10 @@ export default function App() {
                     <Route path="/queue-monitor" element={<QueueMonitor />} />
                     <Route path="/shifts" element={<Shifts />} />
                     <Route path="/day-closings" element={<DayClosings />} />
+                    <Route
+                        path="/journal-entries"
+                        element={<JournalEntries />}
+                    />
                 </Route>
             </Route>
 

@@ -17,6 +17,7 @@ import {
     Activity,
     Clock,
     CalendarDays,
+    FileText,
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -26,7 +27,6 @@ type NavItem = {
     label: string;
     icon: typeof LayoutDashboard;
     path: string;
-    /** Role names that may see this item. Empty/undefined = everyone. */
     roles?: string[];
 };
 
@@ -36,59 +36,60 @@ const NAV_ITEMS: NavItem[] = [
     {
         label: "Companies",
         icon: Building2,
-        path: "companies",
+        path: "/companies",
         roles: ["super_admin"],
     },
     {
         label: "Items",
         icon: Package,
-        path: "items",
+        path: "/items",
         roles: ["super_admin", "admin", "manager"],
     },
     {
         label: "Price Lists",
         icon: Tags,
-        path: "price-lists",
+        path: "/price-lists",
         roles: ["super_admin"],
     },
     {
         label: "Item Prices",
         icon: DollarSign,
-        path: "item-prices",
+        path: "/item-prices",
         roles: ["super_admin", "admin"],
     },
     {
         label: "Sales",
         icon: Receipt,
-        path: "sales",
+        path: "/sales",
         roles: ["super_admin", "admin", "manager"],
     },
-    { label: "Customers", icon: UsersRound, path: "customers" },
+    { label: "Customers", icon: UsersRound, path: "/customers" },
     {
         label: "Stock",
         icon: Warehouse,
-        path: "stock",
+        path: "/stock",
         roles: ["super_admin", "admin", "manager"],
     },
     {
         label: "Till Accounts",
         icon: CreditCard,
-        path: "till-accounts",
+        path: "/till-accounts",
         roles: ["super_admin", "admin"],
     },
     {
         label: "Queue Monitor",
         icon: Activity,
-        path: "queue-monitor",
+        path: "/queue-monitor",
         roles: ["super_admin"],
     },
     {
         label: "Shifts",
         icon: Clock,
-        path: "shifts",
+        path: "/shifts",
         roles: ["super_admin", "admin", "manager"],
     },
-    { label: "Day Closings", icon: CalendarDays, path: "day-closings" },
+    { label: "Day Closings", icon: CalendarDays, path: "/day-closings" },
+    { label: "Expenses", icon: FileText, path: "/journal-entries" },
 ];
 
 const STORAGE_KEY = "karobardesk.sidebar.collapsed";
@@ -118,8 +119,8 @@ export default function AppSidebar() {
                 collapsed ? "w-16" : "w-60",
             )}
         >
-            {/* Header: collapse toggle */}
-            <div className="flex h-14 items-center justify-end border-b border-white/10 px-2">
+            {/* Header: collapse toggle (Always fixed at top) */}
+            <div className="flex h-14 shrink-0 items-center justify-end border-b border-white/10 px-2">
                 <button
                     type="button"
                     onClick={() => setCollapsed((v) => !v)}
@@ -138,13 +139,13 @@ export default function AppSidebar() {
 
             {/* MENU label */}
             {!collapsed && (
-                <div className="px-4 pb-2 pt-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="shrink-0 px-4 pb-2 pt-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                     Menu
                 </div>
             )}
 
-            {/* Nav items */}
-            <nav className="flex-1 space-y-1 px-2 py-2">
+            {/* Nav items (Inner Scroll) */}
+            <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-2 py-2">
                 {visibleItems.map((item) => {
                     const Icon = item.icon;
                     return (

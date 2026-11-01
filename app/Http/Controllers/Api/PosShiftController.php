@@ -13,6 +13,67 @@ use Carbon\Carbon;
 
 class PosShiftController extends Controller
 {
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_id' => 'required|exists:companies,id',
+            'posting_date' => 'required|date',
+            'title' => 'required|string|max:255',
+            'user_remark' => 'nullable|string',
+            'total_amount' => 'required|numeric|min:0.01',
+            'expense_account_id' => 'required|exists:accounts,id',
+            'payment_account_id' => 'required|exists:accounts,id',
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
+            $user = $request->user();
+
+            // Generate a unique entry number (e.g., JV-20261101-0001)
+            $count = \App\Models\JournalEntry::whereDate('created_at', now())->count() + 1;
+            $entryNumber = 'JV-' . now()->format('Ymd') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+            // Create the Journal Entry header
+            $journalEntry = \App\Models\JournalEntry::create([
+                'company_id' => $validated['company_id'],
+                'user_id' => $user->id,
+                'entry_number' => $entryNumber,
+                'posting_date' => $validated['posting_date'],
+                'voucher_type' => 'Journal Entry',
+                'title' => $validated['title'],
+                'user_remark' => $validated['user_remark'] ?? null,
+                'total_debit' => $validated['total_amount'],
+                'total_credit' => $validated['total_amount'],
+                'sync_status' => 'pending', // Will be pushed to ERPNext later
+            ]);
+
+            // Create the Debit Line (Expense)
+            $expenseAccount = \App\Models\Account::findOrFail($validated['expense_account_id']);
+            \App\Models\JournalEntryAccount::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $expenseAccount->id,
+                'erpnext_account' => $expenseAccount->erpnext_account ?? $expenseAccount->name,
+                'account_name' => $expenseAccount->name,
+                'debit' => $validated['total_amount'],
+                'credit' => 0,
+            ]);
+
+            // Create the Credit Line (Payment/Cash)
+            $paymentAccount = \App\Models\Account::findOrFail($validated['payment_account_id']);
+            \App\Models\JournalEntryAccount::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $paymentAccount->id,
+                'erpnext_account' => $paymentAccount->erpnext_account ?? $paymentAccount->name,
+                'account_name' => $paymentAccount->name,
+                'debit' => 0,
+                'credit' => $validated['total_amount'],
+            ]);
+
+            return response()->json([
+                'message' => 'Journal Entry created successfully.',
+                'data' => $journalEntry
+            ], 201);
+        });
+    }
     public function sync(Request $request): JsonResponse
     {
         $validated = $request->validate([

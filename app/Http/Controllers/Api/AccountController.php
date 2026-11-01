@@ -14,6 +14,11 @@ class AccountController extends Controller
     {
         $query = Account::query()->with('company:id,name');
 
+        // ⭐ Filter by Company ID ⭐
+        if ($request->query('company_id')) {
+            $query->where('company_id', $request->query('company_id'));
+        }
+
         if ($search = $request->string('search')->toString()) {
             $query->where('name', 'like', "%{$search}%")
                 ->orWhere('erpnext_account', 'like', "%{$search}%");

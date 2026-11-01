@@ -1,216 +1,197 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxOption {
     value: string;
     label: string;
-    sublabel?: string; // optional second line (e.g. item code)
 }
 
-interface Props {
-    value: string;
+interface ComboboxProps {
     options: ComboboxOption[];
+    value: string;
     onChange: (value: string) => void;
     placeholder?: string;
-    searchPlaceholder?: string;
-    emptyText?: string;
     className?: string;
 }
 
 export default function Combobox({
-    value,
     options,
+    value,
     onChange,
     placeholder = "Select...",
-    searchPlaceholder = "Search...",
-    emptyText = "No matches",
     className,
-}: Props) {
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState("");
-    const [coords, setCoords] = useState<{
-        top: number;
-        left: number;
-        width: number;
-    } | null>(null);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const panelRef = useRef<HTMLDivElement>(null);
+}: ComboboxProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const [highlightedIndex, setHighlightedIndex] = useState(0);
+
+    // Position state for the portal
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+    const triggerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const selected = options.find((o) => o.value === value);
+    const selectedOption = options.find((opt) => opt.value === value);
+    const filteredOptions = options.filter((opt) =>
+        opt.label.toLowerCase().includes(search.toLowerCase()),
+    );
 
-    // Position panel
     useEffect(() => {
-        if (!open || !triggerRef.current) return;
-        const rect = triggerRef.current.getBoundingClientRect();
-        setCoords({ top: rect.bottom + 6, left: rect.left, width: rect.width });
-    }, [open]);
+        setHighlightedIndex(0);
+    }, [search]);
 
-    // Reposition on scroll/resize
+    // Handle outside click
     useEffect(() => {
-        if (!open) return;
-        const update = () => {
-            if (!triggerRef.current) return;
+        const handleOutsideClick = (e: MouseEvent) => {
+            if (
+                triggerRef.current &&
+                !triggerRef.current.contains(e.target as Node) &&
+                dropdownRef.current &&
+                !dropdownRef.current.contains(e.target as Node)
+            ) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () =>
+            document.removeEventListener("mousedown", handleOutsideClick);
+    }, []);
+
+    // Update position when opening
+    const handleOpen = () => {
+        if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             setCoords({
-                top: rect.bottom + 6,
-                left: rect.left,
+                top: rect.bottom + window.scrollY + 4, // 4px gap
+                left: rect.left + window.scrollX,
                 width: rect.width,
             });
-        };
-        window.addEventListener("scroll", update, true);
-        window.addEventListener("resize", update);
-        return () => {
-            window.removeEventListener("scroll", update, true);
-            window.removeEventListener("resize", update);
-        };
-    }, [open]);
-
-    // Focus search on open
-    useEffect(() => {
-        if (open) {
-            setQuery("");
-            setTimeout(() => inputRef.current?.focus(), 0);
         }
-    }, [open]);
+        setIsOpen(true);
+        setTimeout(() => inputRef.current?.focus(), 50);
+    };
 
-    // Outside click + Escape
-    useEffect(() => {
-        if (!open) return;
-        function onDown(e: MouseEvent) {
-            const target = e.target as Node;
-            if (panelRef.current?.contains(target)) return;
-            if (triggerRef.current?.contains(target)) return;
-            setOpen(false);
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!isOpen) {
+            if (e.key === "ArrowDown" || e.key === "Enter") {
+                handleOpen();
+                e.preventDefault();
+            }
+            return;
         }
-        function onKey(e: KeyboardEvent) {
-            if (e.key === "Escape") setOpen(false);
-        }
-        document.addEventListener("mousedown", onDown);
-        document.addEventListener("keydown", onKey);
-        return () => {
-            document.removeEventListener("mousedown", onDown);
-            document.removeEventListener("keydown", onKey);
-        };
-    }, [open]);
 
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return options;
-        return options.filter((o) => {
-            const hay = `${o.label} ${o.sublabel ?? ""}`.toLowerCase();
-            return hay.includes(q);
-        });
-    }, [options, query]);
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHighlightedIndex((prev) => (prev + 1) % filteredOptions.length);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlightedIndex(
+                (prev) =>
+                    (prev - 1 + filteredOptions.length) %
+                    filteredOptions.length,
+            );
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (filteredOptions[highlightedIndex]) {
+                onChange(filteredOptions[highlightedIndex].value);
+                setIsOpen(false);
+                setSearch("");
+            }
+        } else if (e.key === "Escape") {
+            setIsOpen(false);
+            setSearch("");
+        }
+    };
+
+    const handleSelect = (val: string) => {
+        onChange(val);
+        setIsOpen(false);
+        setSearch("");
+    };
 
     return (
-        <>
-            <button
+        <div className={cn("relative w-full", className)}>
+            {/* Trigger Button */}
+            <div
                 ref={triggerRef}
-                type="button"
-                onClick={() => setOpen((v) => !v)}
-                className={cn(
-                    "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-foreground outline-none transition hover:bg-white/10 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20",
-                    className,
-                )}
+                onClick={handleOpen}
+                className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 text-sm transition hover:bg-white/10 focus-within:border-violet-500/40 focus-within:ring-1 focus-within:ring-violet-500/20"
             >
                 <span
                     className={cn(
-                        "truncate text-left",
-                        !selected && "text-muted-foreground",
+                        "truncate",
+                        !selectedOption && "text-muted-foreground",
                     )}
                 >
-                    {selected ? selected.label : placeholder}
+                    {selectedOption ? selectedOption.label : placeholder}
                 </span>
-                <ChevronDown
-                    className={cn(
-                        "h-3.5 w-3.5 shrink-0 text-muted-foreground transition",
-                        open && "rotate-180",
-                    )}
-                />
-            </button>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
 
-            {open &&
-                coords &&
+            {/* Dropdown (Rendered via Portal) */}
+            {isOpen &&
                 createPortal(
                     <div
-                        ref={panelRef}
+                        ref={dropdownRef}
                         style={{
-                            position: "fixed",
+                            position: "absolute",
                             top: coords.top,
                             left: coords.left,
-                            minWidth: coords.width,
+                            width: coords.width,
                         }}
-                        className="z-[100] flex max-h-[320px] w-[320px] flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/95 shadow-2xl backdrop-blur-xl"
+                        className="z-[100] rounded-xl border border-white/10 bg-neutral-900 shadow-2xl"
                     >
-                        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
-                            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                placeholder={searchPlaceholder}
-                                className="h-6 w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-                            />
-                            {query && (
-                                <button
-                                    type="button"
-                                    onClick={() => setQuery("")}
-                                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                                    aria-label="Clear"
-                                >
-                                    <X className="h-3 w-3" />
-                                </button>
-                            )}
+                        <div className="border-b border-white/10 p-2">
+                            <div className="relative">
+                                <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Search..."
+                                    className="h-8 w-full rounded-md border border-white/10 bg-white/5 pl-8 pr-2 text-xs text-foreground outline-none focus:border-violet-500/40"
+                                />
+                            </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
-                            {filtered.length === 0 ? (
-                                <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                                    {emptyText}
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
+                            {filteredOptions.length === 0 ? (
+                                <div className="py-4 text-center text-xs text-muted-foreground">
+                                    No results found.
                                 </div>
                             ) : (
-                                filtered.map((opt) => {
-                                    const isActive = opt.value === value;
-                                    return (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => {
-                                                onChange(opt.value);
-                                                setOpen(false);
-                                            }}
-                                            className={cn(
-                                                "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition",
-                                                isActive
-                                                    ? "bg-violet-500/10 text-violet-200"
-                                                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                                            )}
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <div className="truncate">
-                                                    {opt.label}
-                                                </div>
-                                                {opt.sublabel && (
-                                                    <div className="truncate text-[10px] text-muted-foreground">
-                                                        {opt.sublabel}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {isActive && (
-                                                <Check className="h-3.5 w-3.5 shrink-0" />
-                                            )}
-                                        </button>
-                                    );
-                                })
+                                filteredOptions.map((opt, index) => (
+                                    <div
+                                        key={opt.value}
+                                        onClick={() => handleSelect(opt.value)}
+                                        onMouseEnter={() =>
+                                            setHighlightedIndex(index)
+                                        }
+                                        className={cn(
+                                            "flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm",
+                                            index === highlightedIndex
+                                                ? "bg-violet-600/20 text-foreground"
+                                                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                                        )}
+                                    >
+                                        <span className="truncate">
+                                            {opt.label}
+                                        </span>
+                                        {value === opt.value && (
+                                            <Check className="h-4 w-4 text-violet-400" />
+                                        )}
+                                    </div>
+                                ))
                             )}
                         </div>
                     </div>,
                     document.body,
                 )}
-        </>
+        </div>
     );
 }
