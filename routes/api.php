@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\QueueMonitorController;
 use App\Http\Controllers\Api\PosShiftController;
 use App\Http\Controllers\Api\JournalEntryController;
+use App\Http\Controllers\Api\DashboardController;
 
 
 Route::get('/health', fn() => response()->json(['ok' => true]));
@@ -63,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/field-permissions/{form}', [FieldPermissionController::class, 'show']);
     Route::post('/company/switch', [CompanySwitchController::class, 'switch'])
         ->middleware('company.access');
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // ⭐ ADDED THE SALES UI ROUTES HERE ⭐
     Route::get('/sales', [SalesController::class, 'index']);

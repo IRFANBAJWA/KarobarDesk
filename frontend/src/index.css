@@ -33,7 +33,7 @@
   }
 
   .dark {
-    /* Dark mode — HSL */
+    /* Dark mode — HSL (Defaults for shadcn) */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 5.9%;
@@ -65,8 +65,10 @@
   * {
     @apply border-border;
   }
+  
+  /* ⭐ Changed default background to Deep Obsidian and text to white ⭐ */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#050508] text-white antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -80,7 +82,26 @@
     scrollbar-width: none;
 }
 
+/* ⭐ Beautiful Custom Scrollbar for Sidebar ⭐ */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+}
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
 
+/* ⭐ Thermal Print Styles ⭐ */
 @media print {
   body * {
     visibility: hidden;
@@ -92,34 +113,37 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 80mm; /* Standard thermal printer width */
+    width: 80mm;
     margin: 0;
     padding: 5mm;
-    font-family: 'Courier New', Courier, monospace; /* Monospace for receipt look */
-    color: black;
-    background: white;
+    font-family: 'Courier New', Courier, monospace;
+    color: black !important;
+    background: white !important;
   }
   .no-print {
     display: none !important;
   }
 }
 
+/* ⭐ PREMIUM GLASSMORPHISM UTILITIES ⭐ */
+@layer components {
+  /* Ambient Background Glows */
+  .ambient-glow-1 {
+    @apply absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-violet-600/10 blur-[150px] pointer-events-none animate-pulse-glow;
+  }
+  
+  .ambient-glow-2 {
+    @apply absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-600/10 blur-[150px] pointer-events-none animate-pulse-glow;
+  }
 
-/* Beautiful Custom Scrollbar for Sidebar */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-}
-.custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  /* The Glass Panel Base */
+  .glass-panel {
+    @apply relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.5)] overflow-hidden;
+  }
+
+  /* The "Light Reflection" Top Highlight */
+  .glass-panel::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none z-10;
+  }
 }
