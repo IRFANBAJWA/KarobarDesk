@@ -35,3 +35,9 @@ export async function listSales(params: ListSalesParams = {}): Promise<ListSales
 export async function getSale(id: number): Promise<{ data: SaleDetail }> {
     return apiFetch<{ data: SaleDetail }>(`/api/sales/${id}?_t=${Date.now()}`);
 }
+
+export async function retrySync(id: number) {
+    return apiFetch(`/api/sales/${id}/retry-sync`, {
+        method: 'POST',
+    });
+}

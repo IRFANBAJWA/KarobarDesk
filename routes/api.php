@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\QueueMonitorController;
 use App\Http\Controllers\Api\PosShiftController;
 use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\StockAuditController;
 
 
 Route::get('/health', fn() => response()->json(['ok' => true]));
@@ -90,6 +91,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{user}', [TillAccountController::class, 'update']);
     });
 
+
+
+    Route::prefix('stock-audits')->group(function () {
+        Route::get('/today', [StockAuditController::class, 'index']);
+        Route::post('/count', [StockAuditController::class, 'saveCount']);
+        Route::post('batch-count', [StockAuditController::class, 'saveBatchCounts']);
+        Route::get('/{audit}/review', [StockAuditController::class, 'review']);
+        Route::post('/{audit}/finalize', [StockAuditController::class, 'finalize']);
+    });
     Route::get('/shifts', [ShiftController::class, 'index']);
     Route::get('/shifts/{shift}', [ShiftController::class, 'show']);
 

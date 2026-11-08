@@ -13,6 +13,9 @@ export interface SaleInvoice {
       sync_status: "pending" | "synced" | "failed" | null;
     erpnext_invoice_reference: string | null;
     sync_error: string | null;
+     original_invoice?: { 
+        invoice_number: string 
+    } | null; 
 }
 
 export interface SaleDetail extends SaleInvoice {

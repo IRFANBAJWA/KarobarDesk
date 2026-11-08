@@ -1,6 +1,6 @@
 import type { SaleInvoice } from "../types";
-import { Eye } from "lucide-react";
-import SyncStatusBadge from "@/components/badges/SyncStatusBadge"; // ⭐ Import the generic badge
+import { Eye, RotateCcw, ArrowUpRight, Calendar } from "lucide-react";
+import SyncStatusBadge from "@/components/badges/SyncStatusBadge";
 
 interface Props {
     data: SaleInvoice[];
@@ -8,105 +8,173 @@ interface Props {
     onView: (id: number) => void;
 }
 
+const formatPKR = (value: number) =>
+    `Rs ${Number(value || 0).toLocaleString("en-PK", {
+        maximumFractionDigits: 0,
+    })}`;
+
 export default function SalesTable({ data, loading, onView }: Props) {
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-                <thead>
-                    <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-6 py-3 font-medium">Invoice #</th>
-                        <th className="px-6 py-3 font-medium">Type</th>
-                        <th className="px-6 py-3 font-medium">Customer</th>
-                        <th className="px-6 py-3 font-medium">Cashier</th>
-                        <th className="px-6 py-3 font-medium">Total</th>
-                        <th className="px-6 py-3 font-medium">Status</th>
-
-                        {/* ⭐ NEW COLUMNS ⭐ */}
-                        <th className="px-6 py-3 font-medium">ERPNext Sync</th>
-                        <th className="px-6 py-3 font-medium">ERPNext Ref</th>
-
-                        <th className="px-6 py-3 text-right font-medium">
+        <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[950px] border-collapse text-sm">
+                {/* TABLE HEADER */}
+                <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-white/10 bg-white/[0.02] text-left text-[11px] uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                        <th className="px-5 py-4 font-semibold">Invoice #</th>
+                        <th className="px-4 py-4 font-semibold">Date</th>
+                        <th className="px-4 py-4 font-semibold">Customer</th>
+                        <th className="px-4 py-4 font-semibold">Cashier</th>
+                        <th className="px-4 py-4 text-right font-semibold">
+                            Total
+                        </th>
+                        <th className="px-4 py-4 text-center font-semibold">
+                            Status
+                        </th>
+                        <th className="px-4 py-4 text-center font-semibold">
+                            ERPNext Sync
+                        </th>
+                        <th className="px-5 py-4 text-center font-semibold">
                             Actions
                         </th>
                     </tr>
                 </thead>
+
+                {/* TABLE BODY */}
                 <tbody>
                     {loading ? (
-                        // ⭐ LOADING SKELETON ROWS ⭐
                         Array.from({ length: 5 }).map((_, i) => (
                             <tr key={i} className="border-b border-white/5">
-                                {/* Updated colSpan from 7 to 9 to match new columns */}
-                                <td colSpan={9} className="px-6 py-4">
-                                    <div className="h-6 animate-pulse rounded bg-white/5 w-full" />
+                                <td colSpan={8} className="px-5 py-5">
+                                    <div className="h-7 w-full animate-pulse rounded-lg bg-white/5" />
                                 </td>
                             </tr>
                         ))
                     ) : data.length === 0 ? (
                         <tr>
                             <td
-                                colSpan={9} // Updated colSpan from 7 to 9
-                                className="px-6 py-16 text-center text-muted-foreground"
+                                colSpan={8}
+                                className="px-4 py-16 text-center text-sm text-slate-400"
                             >
                                 No transactions found for this filter.
                             </td>
                         </tr>
                     ) : (
-                        data.map((sale) => (
-                            <tr
-                                key={sale.id}
-                                className="border-b border-white/5 transition hover:bg-white/[0.02]"
-                            >
-                                <td className="px-6 py-4 font-medium">
-                                    {sale.invoice_number}
-                                </td>
-                                <td className="px-6 py-4 capitalize">
-                                    {sale.invoice_type}
-                                </td>
-                                <td className="px-6 py-4">
-                                    {sale.customer?.customer_name || "Walk-in"}
-                                </td>
-                                <td className="px-6 py-4">
-                                    {sale.user?.name || "System"}
-                                </td>
-                                <td className="px-6 py-4 tabular-nums">
-                                    {sale.grand_total}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span
-                                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                            sale.status === "paid"
-                                                ? "bg-emerald-500/10 text-emerald-400"
-                                                : sale.status === "partial"
-                                                  ? "bg-amber-500/10 text-amber-400"
-                                                  : "bg-red-500/10 text-red-400"
-                                        }`}
-                                    >
-                                        {sale.status.toUpperCase()}
-                                    </span>
-                                </td>
+                        data.map((sale) => {
+                            const isReturn = sale.invoice_type === "return";
 
-                                {/* ⭐ ERPNext Sync Badge ⭐ */}
-                                <td className="px-6 py-4">
-                                    <SyncStatusBadge
-                                        status={sale.sync_status}
-                                    />
-                                </td>
+                            return (
+                                <tr
+                                    key={sale.id}
+                                    className="group border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.035]"
+                                >
+                                    {/* INVOICE NUMBER + TYPE ICON */}
+                                    <td className="px-5 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                                                    isReturn
+                                                        ? "border-red-500/20 bg-red-500/10 text-red-400"
+                                                        : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                                }`}
+                                                title={
+                                                    isReturn ? "Return" : "Sale"
+                                                }
+                                            >
+                                                {isReturn ? (
+                                                    <RotateCcw className="h-4 w-4" />
+                                                ) : (
+                                                    <ArrowUpRight className="h-4 w-4" />
+                                                )}
+                                            </div>
 
-                                {/* ⭐ ERPNext Reference ⭐ */}
-                                <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
-                                    {sale.erpnext_invoice_reference || "—"}
-                                </td>
+                                            <div className="flex min-w-0 flex-col">
+                                                <span className="font-semibold text-white">
+                                                    {sale.invoice_number}
+                                                </span>
+                                                {isReturn &&
+                                                    (sale as any)
+                                                        .original_invoice && (
+                                                        <span className="mt-1 text-[10px] text-violet-400">
+                                                            Ref:{" "}
+                                                            {
+                                                                (sale as any)
+                                                                    .original_invoice
+                                                                    .invoice_number
+                                                            }
+                                                        </span>
+                                                    )}
+                                            </div>
+                                        </div>
+                                    </td>
 
-                                <td className="px-6 py-4 text-right">
-                                    <button
-                                        onClick={() => onView(sale.id)}
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-white/10 hover:text-foreground ml-auto"
-                                    >
-                                        <Eye className="h-4 w-4" />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
+                                    {/* DATE */}
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-300">
+                                            <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                                            {new Date(
+                                                sale.invoice_date ||
+                                                    sale.created_at,
+                                            ).toLocaleDateString("en-PK", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                            })}
+                                        </div>
+                                    </td>
+
+                                    {/* CUSTOMER */}
+                                    <td className="px-4 py-4 whitespace-nowrap text-slate-300">
+                                        {sale.customer?.customer_name ||
+                                            "Walk-in"}
+                                    </td>
+
+                                    {/* CASHIER */}
+                                    <td className="px-4 py-4 whitespace-nowrap text-slate-300">
+                                        {sale.user?.name || "System"}
+                                    </td>
+
+                                    {/* TOTAL */}
+                                    <td className="px-4 py-4 text-right font-bold text-white tabular-nums whitespace-nowrap">
+                                        {formatPKR(Number(sale.grand_total))}
+                                    </td>
+
+                                    {/* PAYMENT STATUS */}
+                                    <td className="px-4 py-4 text-center whitespace-nowrap">
+                                        <span
+                                            className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                                                sale.status === "paid"
+                                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                                    : sale.status === "partial"
+                                                      ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
+                                                      : "border-red-500/20 bg-red-500/10 text-red-400"
+                                            }`}
+                                        >
+                                            {sale.status}
+                                        </span>
+                                    </td>
+
+                                    {/* ERPNEXT SYNC */}
+                                    <td className="px-4 py-4 text-center whitespace-nowrap">
+                                        <SyncStatusBadge
+                                            status={sale.sync_status}
+                                        />
+                                    </td>
+
+                                    {/* ACTIONS */}
+                                    <td className="px-5 py-4 text-center whitespace-nowrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => onView(sale.id)}
+                                            title="View invoice"
+                                            aria-label={`View invoice ${sale.invoice_number}`}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-slate-400 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })
                     )}
                 </tbody>
             </table>

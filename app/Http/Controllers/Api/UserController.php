@@ -93,24 +93,6 @@ class UserController extends Controller
         return response()->json($users);
     }
 
-    // public function show(User $user): JsonResponse
-    // {
-    //     $user->load([
-    //         'company:id,name,code,erpnext_company',
-    //         'companies:id,name,code',
-    //         'roles:id,name,label,description,is_super_admin',
-    //         'tillOperation',
-    //         'tillOperation.priceList',
-    //         'tillOperation.accounts',
-    //     ]);
-
-    //     if ($user->tillOperation) {
-    //         $user->tillOperation->makeVisible('return_pin');
-    //     }
-
-    //     return response()->json(['data' => $user]);
-    // }
-
     // ---------------------------------------------------------------------
     // SHOW
     // ---------------------------------------------------------------------
@@ -162,8 +144,13 @@ class UserController extends Controller
             }
 
             // 3. Multi-company access
-            if (! empty($data['company_access'])) {
-                $user->companies()->sync($data['company_access']);
+            $companyAccess = $data['company_access'] ?? [];
+            // ⭐ Ensure the primary company is always in the pivot table
+            if ($user->company_id && !in_array($user->company_id, $companyAccess)) {
+                $companyAccess[] = $user->company_id;
+            }
+            if (! empty($companyAccess)) {
+                $user->companies()->sync($companyAccess);
             }
 
             // 4. Audit
@@ -254,7 +241,12 @@ class UserController extends Controller
             $user->roles()->sync($roleIds);
 
             // Company access
-            $user->companies()->sync($data['company_access'] ?? []);
+            $companyAccess = $data['company_access'] ?? [];
+            // ⭐ Ensure the primary company is always in the pivot table
+            if ($user->company_id && !in_array($user->company_id, $companyAccess)) {
+                $companyAccess[] = $user->company_id;
+            }
+            $user->companies()->sync($companyAccess);
 
             $after = [
                 'name'       => $user->name,
@@ -392,7 +384,7 @@ class UserController extends Controller
     }
 
     // ---------------------------------------------------------------------
-    // LINK ERPNEXT — establish or refresh the ERPNext link for a user
+    // LINK ERPNEXT
     // ---------------------------------------------------------------------
 
     public function linkErpNext(LinkErpNextRequest $request, User $user): JsonResponse
@@ -458,7 +450,7 @@ class UserController extends Controller
     }
 
     // ---------------------------------------------------------------------
-    // UNLINK ERPNEXT — remove the ERPNext association
+    // UNLINK ERPNEXT
     // ---------------------------------------------------------------------
 
     public function unlinkErpNext(User $user): JsonResponse
@@ -480,7 +472,6 @@ class UserController extends Controller
         DB::transaction(function () use ($user, $actorId) {
             $previousErpUser = $user->erpnext_user;
 
-            // 1. Null the link fields on the user
             $user->forceFill([
                 'erpnext_user'           => null,
                 'erpnext_token'          => null,
@@ -488,13 +479,11 @@ class UserController extends Controller
                 'erpnext_last_tested_at' => null,
             ])->save();
 
-            // 2. Remove the till operation for this user
             if ($user->tillOperation) {
                 $user->tillOperation->accounts()->detach();
                 $user->tillOperation->delete();
             }
 
-            // 3. Audit
             $this->audit->log(
                 action: 'user.erpnext_unlinked',
                 module: 'users',
@@ -514,7 +503,6 @@ class UserController extends Controller
             'message' => 'ERPNext link removed.',
         ]);
     }
-
 
     public function updateTill(Request $request, User $user): JsonResponse
     {
@@ -553,13 +541,11 @@ class UserController extends Controller
             'return_pin' => $request->return_pin,
         ]);
 
-        // Reload the relations using the $user variable
         $user->load([
             'tillOperation.priceList',
             'tillOperation.accounts'
         ]);
 
-        // Unhide the return_pin so the UI can see it
         if ($user->tillOperation) {
             $user->tillOperation->makeVisible('return_pin');
         }

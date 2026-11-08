@@ -1,62 +1,60 @@
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+import InteractiveGlassCard from "@/components/glass/InteractiveGlassCard";
 
 interface Props {
     title: string;
     value: string | number;
+    breakdown?: {
+        gross: string | number;
+        returns: string | number;
+        returnsColor?: "red" | "orange";
+    };
     trend?: string;
     comparisonLabel?: string;
     trendDirection?: "positive" | "negative" | "neutral";
     icon?: LucideIcon;
     color?: "orange" | "emerald" | "blue" | "violet" | "red";
-    delay?: number; // Stagger animation
+    delay?: number;
 }
 
-const colorThemes: Record<
-    string,
-    { bg: string; border: string; iconBg: string; glow: string }
-> = {
+const colorThemes = {
     orange: {
-        bg: "bg-gradient-to-br from-orange-500/[0.08] to-transparent",
-        border: "border-white/[0.06] hover:border-orange-500/30",
-        iconBg: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-        glow: "hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]",
+        icon: "bg-orange-400/10 text-orange-300 border-orange-300/20",
+        glow: "hover:shadow-orange-500/[0.10]",
+        accent: "rgba(251, 146, 60, 0.15)",
     },
     emerald: {
-        bg: "bg-gradient-to-br from-emerald-500/[0.08] to-transparent",
-        border: "border-white/[0.06] hover:border-emerald-500/30",
-        iconBg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-        glow: "hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+        icon: "bg-emerald-400/10 text-emerald-300 border-emerald-300/20",
+        glow: "hover:shadow-emerald-500/[0.10]",
+        accent: "rgba(52, 211, 153, 0.15)",
     },
     blue: {
-        bg: "bg-gradient-to-br from-blue-500/[0.08] to-transparent",
-        border: "border-white/[0.06] hover:border-blue-500/30",
-        iconBg: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-        glow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.15)]",
+        icon: "bg-blue-400/10 text-blue-300 border-blue-300/20",
+        glow: "hover:shadow-blue-500/[0.10]",
+        accent: "rgba(96, 165, 250, 0.16)",
     },
     violet: {
-        bg: "bg-gradient-to-br from-violet-500/[0.08] to-transparent",
-        border: "border-white/[0.06] hover:border-violet-500/30",
-        iconBg: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-        glow: "hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]",
+        icon: "bg-violet-400/10 text-violet-300 border-violet-300/20",
+        glow: "hover:shadow-violet-500/[0.10]",
+        accent: "rgba(167, 139, 250, 0.17)",
     },
     red: {
-        bg: "bg-gradient-to-br from-red-500/[0.08] to-transparent",
-        border: "border-white/[0.06] hover:border-red-500/30",
-        iconBg: "bg-red-500/10 text-red-400 border-red-500/20",
-        glow: "hover:shadow-[0_0_30px_rgba(239,68,68,0.15)]",
+        icon: "bg-red-400/10 text-red-300 border-red-300/20",
+        glow: "hover:shadow-red-500/[0.10]",
+        accent: "rgba(248, 113, 113, 0.15)",
     },
 };
 
 const trendColorMap = {
-    positive: "text-emerald-400 bg-emerald-400/10",
-    negative: "text-red-400 bg-red-400/10",
-    neutral: "text-neutral-400 bg-white/5",
+    positive: "text-emerald-300 bg-emerald-400/[0.10] border-emerald-300/15",
+    negative: "text-red-300 bg-red-400/[0.10] border-red-300/15",
+    neutral: "text-slate-300 bg-white/[0.05] border-white/[0.08]",
 };
 
-// Simple count-up animation for numbers
 function AnimatedValue({
     value,
     prefix = "",
@@ -73,28 +71,28 @@ function AnimatedValue({
             : Number(String(value).replace(/[^0-9.]/g, ""));
 
     useEffect(() => {
-        if (isNaN(numericValue) || numericValue === 0) {
+        if (!Number.isFinite(numericValue) || numericValue === 0) {
             setDisplayValue(String(value));
             return;
         }
-
         let start = 0;
-        const duration = 1000; // 1 second
-        const increment = numericValue / (duration / 16); // 60fps
+        const duration = 1000;
+        const frameDuration = 16;
+        const increment = numericValue / (duration / frameDuration);
 
-        const timer = setInterval(() => {
+        const timer = window.setInterval(() => {
             start += increment;
             if (start >= numericValue) {
                 setDisplayValue(String(value));
-                clearInterval(timer);
+                window.clearInterval(timer);
             } else {
                 setDisplayValue(
                     `${prefix}${Math.floor(start).toLocaleString()}${suffix}`,
                 );
             }
-        }, 16);
+        }, frameDuration);
 
-        return () => clearInterval(timer);
+        return () => window.clearInterval(timer);
     }, [numericValue, value, prefix, suffix]);
 
     return <span>{displayValue}</span>;
@@ -103,6 +101,7 @@ function AnimatedValue({
 export default function KpiCard({
     title,
     value,
+    breakdown,
     trend,
     comparisonLabel,
     trendDirection,
@@ -117,76 +116,120 @@ export default function KpiCard({
             : trend?.trim().startsWith("-")
               ? "negative"
               : "neutral");
-    const theme = colorThemes[color] || colorThemes.orange;
+    const theme = colorThemes[color] ?? colorThemes.orange;
 
-    // Format the value for the counter
     const isCurrency = String(value).includes("Rs");
     const prefix = isCurrency ? "Rs " : "";
     const cleanValue = isCurrency ? String(value).replace("Rs ", "") : value;
 
     return (
-        <div
+        <InteractiveGlassCard
             className={cn(
-                "group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-5 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1",
-                theme.border,
-                theme.bg,
+                "group relative flex min-h-[160px] flex-col", // Increased height for breakdown
+                "justify-between overflow-hidden rounded-2xl",
+                "border border-white/[0.12]",
+                "bg-white/[0.045] p-5",
+                "backdrop-blur-2xl",
+                "shadow-[0_12px_35px_rgba(2,8,23,0.16)]",
+                "transition-all duration-300",
+                "hover:border-white/[0.20]",
+                "hover:bg-white/[0.065]",
+                "hover:shadow-[0_18px_45px_rgba(2,8,23,0.25)]",
                 theme.glow,
-                "animate-fade-in-up opacity-0", // Start hidden for animation
+                "animate-fade-in-up opacity-0",
             )}
             style={{
                 animationDelay: `${delay}ms`,
                 animationFillMode: "forwards",
+                ["--spotlight-color" as string]: theme.accent,
             }}
+            tiltStrength={3}
+            spotlightColor={theme.accent}
         >
-            {/* Top Glass Edge Highlight */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Soft color ambience */}
+            <div
+                className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full blur-[55px] opacity-80 transition-opacity duration-500 group-hover:opacity-100"
+                style={{ background: theme.accent }}
+            />
+            <div className="pointer-events-none absolute -bottom-20 -left-12 h-36 w-36 rounded-full bg-blue-400/[0.07] blur-[55px]" />
+            <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
-            <div className="relative z-10 flex items-center justify-between mb-4">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+            <div className="relative z-10 flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-300/80">
                     {title}
                 </span>
                 {Icon && (
                     <div
                         className={cn(
-                            "p-2 rounded-xl border transition-transform duration-300 group-hover:scale-110",
-                            theme.iconBg,
+                            "flex h-10 w-10 shrink-0 items-center justify-center",
+                            "rounded-xl border backdrop-blur-md",
+                            "shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+                            "transition-transform duration-300",
+                            "group-hover:scale-110",
+                            theme.icon,
                         )}
                     >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-[18px] w-[18px]" />
                     </div>
                 )}
             </div>
 
-            <div className="relative z-10">
-                <h4 className="text-2xl font-bold tracking-tight text-white mb-1 tabular-nums">
+            <div className="relative z-10 mt-4">
+                <h4 className="mb-1 text-[26px] font-bold tracking-tight text-white tabular-nums sm:text-[30px]">
                     <AnimatedValue value={cleanValue} prefix={prefix} />
                 </h4>
 
-                <div className="flex items-center gap-2 mt-1">
-                    {trend && direction && (
-                        <span
-                            className={cn(
-                                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold",
-                                trendColorMap[direction],
-                            )}
-                        >
-                            {direction === "positive" ? (
-                                <ArrowUpRight className="h-3 w-3" />
-                            ) : direction === "negative" ? (
-                                <ArrowDownRight className="h-3 w-3" />
-                            ) : (
-                                <Minus className="h-3 w-3" />
-                            )}
-                            {trend}
+                {/* ⭐ BREAKDOWN LOGIC ⭐ */}
+                {breakdown ? (
+                    <div className="flex items-center gap-2 mt-2 text-[10px] font-medium border-t border-white/10 pt-2">
+                        <span className="text-slate-400">
+                            Sale:{" "}
+                            <span className="text-white font-bold">
+                                {breakdown.gross}
+                            </span>
                         </span>
-                    )}
-                    {comparisonLabel && (
-                        <span className="text-[10px] font-medium text-neutral-500">
-                            {comparisonLabel}
+                        <span className="text-slate-600">|</span>
+                        <span className="text-slate-400">
+                            Ret:{" "}
+                            <span
+                                className={
+                                    breakdown.returnsColor === "orange"
+                                        ? "text-orange-400"
+                                        : "text-red-400"
+                                }
+                            >
+                                {breakdown.returns}
+                            </span>
                         </span>
-                    )}
-                </div>
+                    </div>
+                ) : trend || comparisonLabel ? (
+                    <div className="flex min-h-6 flex-wrap items-center gap-2 mt-2">
+                        {trend && (
+                            <span
+                                className={cn(
+                                    "inline-flex items-center gap-1 rounded-lg border px-2 py-1",
+                                    "text-[10px] font-semibold backdrop-blur-md",
+                                    trendColorMap[direction],
+                                )}
+                            >
+                                {direction === "positive" ? (
+                                    <ArrowUpRight className="h-3 w-3" />
+                                ) : direction === "negative" ? (
+                                    <ArrowDownRight className="h-3 w-3" />
+                                ) : (
+                                    <Minus className="h-3 w-3" />
+                                )}
+                                {trend}
+                            </span>
+                        )}
+                        {comparisonLabel && (
+                            <span className="text-[10px] font-medium text-slate-400">
+                                {comparisonLabel}
+                            </span>
+                        )}
+                    </div>
+                ) : null}
             </div>
-        </div>
+        </InteractiveGlassCard>
     );
 }

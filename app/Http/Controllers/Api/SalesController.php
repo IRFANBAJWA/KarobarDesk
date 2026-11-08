@@ -13,7 +13,12 @@ class SalesController extends Controller
     {
         $user = $request->user();
 
-        $query = SalesInvoice::with(['customer:id,customer_name,phone', 'user:id,name', 'company:id,name']);
+        $query = SalesInvoice::with([
+            'customer:id,customer_name,phone',
+            'user:id,name',
+            'company:id,name',
+            'originalInvoice:id,invoice_number'
+        ]);
 
         // Company Access Control
         if (! $user->isSuperAdmin()) {
@@ -58,7 +63,8 @@ class SalesController extends Controller
             'user:id,name',
             'items.item',
             'payments.account',
-            'company:id,name'
+            'company:id,name',
+            'originalInvoice:id,invoice_number'
         ])->findOrFail($id);
 
         return response()->json(['data' => $invoice]);

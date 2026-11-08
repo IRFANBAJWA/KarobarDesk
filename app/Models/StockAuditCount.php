@@ -15,6 +15,7 @@ class StockAuditCount extends Model
     protected $fillable = [
         'stock_audit_item_id',
         'user_id',
+        'created_by',
         'role_area',
         'physical_qty',
         'remarks',
@@ -56,6 +57,11 @@ class StockAuditCount extends Model
     public function stockAuditItem(): BelongsTo
     {
         return $this->belongsTo(StockAuditItem::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function user(): BelongsTo
