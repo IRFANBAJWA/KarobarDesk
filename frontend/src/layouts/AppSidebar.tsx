@@ -20,6 +20,7 @@ import {
     Store,
     X,
     ShieldCheck,
+    History as HistoryIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -91,6 +92,7 @@ const NAV_ITEMS = [
         path: "/stock-audit",
         roles: ["super_admin", "admin", "manager", "cashier", "sales_person"],
     },
+    { label: "Audit History", icon: HistoryIcon, path: "/stock-audit/history" },
 ];
 
 const STORAGE_KEY = "karobardesk.sidebar.collapsed";

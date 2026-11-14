@@ -18,6 +18,7 @@ import Shifts from "./pages/Shifts";
 import DayClosings from "./pages/DayClosings";
 import JournalEntries from "./pages/JournalEntries";
 import StockAudit from "@/pages/StockAudit";
+import StockAuditHistory from "@/pages/StockAuditHistory";
 
 export default function App() {
     return (
@@ -85,6 +86,10 @@ export default function App() {
                     <Route
                         path="/journal-entries"
                         element={<JournalEntries />}
+                    />
+                    <Route
+                        path="/stock-audit/history"
+                        element={<StockAuditHistory />}
                     />
                     <Route path="/stock-audit" element={<StockAudit />} />
                 </Route>

@@ -16,6 +16,7 @@ import {
     AlertTriangle,
     X,
     Save,
+    ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +141,10 @@ export default function StockAudit() {
     const [search, setSearch] = useState("");
     const [isReviewMode, setIsReviewMode] = useState(false);
 
+    // ⭐ Modal State
+    const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
+    const [finalizing, setFinalizing] = useState(false);
+
     const [companies, setCompanies] = useState<any[]>([]);
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
     const [targetUserId, setTargetUserId] = useState<string>("");
@@ -151,6 +156,10 @@ export default function StockAudit() {
     const [localChanges, setLocalChanges] = useState<Record<number, string>>(
         {},
     );
+
+    const [discrepancyReasons, setDiscrepancyReasons] = useState<
+        Record<number, { reason: string; decision: string }>
+    >({});
 
     const [toast, setToast] = useState<{
         message: string;
@@ -233,17 +242,35 @@ export default function StockAudit() {
         }
     };
 
-    const handleFinalize = async () => {
-        if (!confirm("Are you sure? Finalized audits cannot be edited."))
-            return;
+    // ⭐ Open the Confirm Modal
+    const confirmFinalize = () => {
+        setIsFinalizeModalOpen(true);
+    };
+
+    // ⭐ Execute Finalize
+    const executeFinalize = async () => {
+        setFinalizing(true);
+        const itemReasons = Object.entries(discrepancyReasons).map(
+            ([id, data]) => ({
+                id: Number(id),
+                discrepancy_reason: data.reason,
+                decision: data.decision,
+            }),
+        );
+
         try {
             await apiFetch(`/api/stock-audits/${data.audit.id}/finalize`, {
                 method: "POST",
+                body: JSON.stringify({ items: itemReasons }),
             });
+            setIsFinalizeModalOpen(false);
             setIsReviewMode(false);
             fetchAuditData();
+            showToast("Audit finalized and locked", "success");
         } catch (err: any) {
             showToast(err.message || "Failed to finalize", "error");
+        } finally {
+            setFinalizing(false);
         }
     };
 
@@ -264,7 +291,6 @@ export default function StockAudit() {
             item.item_name.toLowerCase().includes(search.toLowerCase()),
         ) || [];
 
-    // ⭐ FIXED REVIEW CALCULATION
     const reviewItems =
         data.items?.map((item: any) => {
             const itemCounts = data.counts.filter((c: any) => {
@@ -289,17 +315,29 @@ export default function StockAudit() {
                     0,
                 );
 
+            const auditItemRecord =
+                itemCounts[0]?.stock_audit_item ||
+                itemCounts[0]?.stockAuditItem;
+
             return {
                 ...item,
                 shopCount,
                 onlineCount,
                 totalPhysical,
-                hasCounts: itemCounts.length > 0,
+                system_qty: Number(item.system_qty || 0),
+                audit_item_id: auditItemRecord?.id,
+                discrepancy_reason: auditItemRecord?.discrepancy_reason,
+                decision: auditItemRecord?.decision,
             };
         }) || [];
 
+    const totalDiscrepancies = reviewItems.filter(
+        (i: any) => i.totalPhysical - i.system_qty !== 0,
+    ).length;
+
     return (
         <div className="mx-auto max-w-[1400px] p-6 space-y-6 pb-24">
+            {/* TOAST */}
             {toast && (
                 <div
                     className={cn(
@@ -324,6 +362,7 @@ export default function StockAudit() {
                 </div>
             )}
 
+            {/* HEADER */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -384,7 +423,7 @@ export default function StockAudit() {
                         ) : (
                             <button
                                 onClick={() => {
-                                    fetchAuditData(); // ⭐ Fetch latest data before switching
+                                    fetchAuditData();
                                     setIsReviewMode(true);
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition mt-4 xl:mt-0"
@@ -394,15 +433,23 @@ export default function StockAudit() {
                         ))}
                     {isManager && isReviewMode && !isFinalized && (
                         <button
-                            onClick={handleFinalize}
+                            onClick={confirmFinalize}
                             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition mt-4 xl:mt-0"
                         >
-                            <CheckCircle2 className="h-4 w-4" /> Finalize
+                            <ShieldAlert className="h-4 w-4" /> Finalize
                         </button>
                     )}
                 </div>
             </div>
 
+            {isFinalized && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 flex items-center gap-2 text-sm font-bold">
+                    <CheckCircle2 className="h-5 w-5" /> This audit has been
+                    finalized and locked.
+                </div>
+            )}
+
+            {/* REVIEW MODE */}
             {isReviewMode ? (
                 <div className="glass-panel overflow-hidden">
                     <table className="w-full text-sm text-left">
@@ -424,13 +471,16 @@ export default function StockAudit() {
                                 <th className="px-6 py-4 text-center">
                                     Difference
                                 </th>
+                                <th className="px-6 py-4 text-left w-1/4">
+                                    Discrepancy Reason
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
                             {reviewItems.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={7}
                                         className="p-12 text-center text-slate-400"
                                     >
                                         <CheckCircle2 className="h-8 w-8 mx-auto mb-3 opacity-20" />
@@ -442,8 +492,7 @@ export default function StockAudit() {
                             ) : (
                                 reviewItems.map((item: any) => {
                                     const diff =
-                                        item.totalPhysical -
-                                        (item.system_qty || 0);
+                                        item.totalPhysical - item.system_qty;
                                     return (
                                         <tr
                                             key={item.id}
@@ -453,7 +502,7 @@ export default function StockAudit() {
                                                 {item.item_name}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-300">
-                                                {item.system_qty ?? "—"}
+                                                {item.system_qty}
                                             </td>
                                             <td className="px-6 py-4 text-center text-blue-400 font-medium">
                                                 {item.shopCount || "-"}
@@ -484,6 +533,50 @@ export default function StockAudit() {
                                                     </span>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-4">
+                                                {diff !== 0 && !isFinalized && (
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter reason..."
+                                                        value={
+                                                            discrepancyReasons[
+                                                                item
+                                                                    .audit_item_id
+                                                            ]?.reason || ""
+                                                        }
+                                                        onChange={(e) => {
+                                                            setDiscrepancyReasons(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    [item.audit_item_id]:
+                                                                        {
+                                                                            ...prev[
+                                                                                item
+                                                                                    .audit_item_id
+                                                                            ],
+                                                                            reason: e
+                                                                                .target
+                                                                                .value,
+                                                                            decision:
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                                    ? "adjusted"
+                                                                                    : "",
+                                                                        },
+                                                                }),
+                                                            );
+                                                        }}
+                                                        className="w-full bg-[#0a0a0f] border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
+                                                    />
+                                                )}
+                                                {isFinalized && (
+                                                    <span className="text-sm text-slate-300">
+                                                        {item.discrepancy_reason ||
+                                                            "-"}
+                                                    </span>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })
@@ -492,6 +585,7 @@ export default function StockAudit() {
                     </table>
                 </div>
             ) : (
+                /* COUNTING MODE ... */
                 <div className="space-y-6 relative">
                     {isManager && !targetUserId && (
                         <div className="absolute inset-0 z-20 bg-[#0a0a0f]/50 backdrop-blur-sm cursor-not-allowed rounded-2xl" />
@@ -634,6 +728,69 @@ export default function StockAudit() {
                     </button>
                 </div>
             )}
+
+            {/* ⭐ FINALIZE CONFIRMATION MODAL ⭐ */}
+            {isFinalizeModalOpen &&
+                createPortal(
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-[#151722] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in-up">
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/20 mx-auto mb-4">
+                                <ShieldAlert className="h-6 w-6 text-amber-400" />
+                            </div>
+
+                            <h2 className="text-xl font-bold text-white text-center mb-2">
+                                Finalize Audit?
+                            </h2>
+                            <p className="text-sm text-slate-400 text-center mb-6">
+                                You are about to finalize this stock audit. Once
+                                locked,{" "}
+                                <strong className="text-white">
+                                    no one can edit
+                                </strong>{" "}
+                                these counts or reasons.
+                            </p>
+
+                            {totalDiscrepancies > 0 && (
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+                                    <p className="text-sm text-red-400 font-medium text-center">
+                                        There are{" "}
+                                        <strong className="text-white">
+                                            {totalDiscrepancies}
+                                        </strong>{" "}
+                                        items with discrepancies. Ensure you
+                                        have entered reasons for all of them.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() =>
+                                        setIsFinalizeModalOpen(false)
+                                    }
+                                    className="flex-1 py-2.5 rounded-xl bg-white/5 text-slate-300 text-sm font-bold hover:bg-white/10 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeFinalize}
+                                    disabled={finalizing}
+                                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition flex items-center justify-center gap-2"
+                                >
+                                    {finalizing ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    )}
+                                    {finalizing
+                                        ? "Locking..."
+                                        : "Yes, Finalize"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }

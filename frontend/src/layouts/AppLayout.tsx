@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Outlet, useNavigate } from "react-router-dom";
 import {
     Building2,
@@ -8,6 +9,7 @@ import {
     Settings,
     Store,
     UserCircle,
+    Loader2, // ⭐ Imported for loading state
 } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
@@ -20,9 +22,14 @@ export default function AppLayout() {
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false); // ⭐ Logout state
+
+    // ⭐ Position state for Portal
+    const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
     const navigate = useNavigate();
     const menuRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     const displayName = user?.name || user?.username || "User";
 
@@ -42,7 +49,9 @@ export default function AppLayout() {
         function handleOutsideClick(event: MouseEvent) {
             if (
                 menuRef.current &&
-                !menuRef.current.contains(event.target as Node)
+                !menuRef.current.contains(event.target as Node) &&
+                buttonRef.current &&
+                !buttonRef.current.contains(event.target as Node)
             ) {
                 setMenuOpen(false);
             }
@@ -63,14 +72,26 @@ export default function AppLayout() {
         };
     }, []);
 
-    async function handleSignOut() {
-        setMenuOpen(false);
-        await logout();
-    }
+    const toggleMenu = () => {
+        if (!menuOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 8,
+                right: window.innerWidth - rect.right,
+            });
+        }
+        setMenuOpen(!menuOpen);
+    };
 
-    function handleSettings() {
+    async function handleSignOut() {
+        setLoggingOut(true);
         setMenuOpen(false);
-        navigate("/settings");
+        try {
+            await logout(); // Safely destroys session, clears context
+        } catch (err) {
+            console.error(err);
+            setLoggingOut(false); // Reset if failed
+        }
     }
 
     return (
@@ -78,7 +99,6 @@ export default function AppLayout() {
             {/* Ambient Background Effects */}
             <div className="ambient-glow-1 fixed" />
             <div className="ambient-glow-2 fixed" />
-
             <div className="pointer-events-none fixed left-[45%] top-[35%] h-[350px] w-[350px] rounded-full bg-indigo-500/[0.025] blur-[120px]" />
 
             {/* Sidebar */}
@@ -91,7 +111,6 @@ export default function AppLayout() {
             <div className="relative z-10 flex h-full min-w-0 flex-1 flex-col">
                 {/* Top Header */}
                 <header className="z-40 shrink-0 border-b border-white/[0.09] bg-white/[0.035] shadow-[0_8px_30px_rgba(2,8,23,0.12)] backdrop-blur-2xl">
-                    {" "}
                     <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                         {/* Mobile Brand */}
                         <div className="flex items-center gap-3 md:hidden">
@@ -141,13 +160,12 @@ export default function AppLayout() {
                         <div className="ml-auto flex items-center gap-3 sm:gap-4">
                             <ThemeToggle />
 
-                            {/* User Dropdown */}
-                            <div className="relative" ref={menuRef}>
+                            {/* User Dropdown Trigger */}
+                            <div className="relative">
                                 <button
+                                    ref={buttonRef}
                                     type="button"
-                                    onClick={() =>
-                                        setMenuOpen((value) => !value)
-                                    }
+                                    onClick={toggleMenu}
                                     aria-expanded={menuOpen}
                                     aria-haspopup="menu"
                                     className={cn(
@@ -172,56 +190,6 @@ export default function AppLayout() {
                                         )}
                                     />
                                 </button>
-
-                                {/* Dropdown */}
-                                {menuOpen && (
-                                    <div className="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-white/[0.14] bg-slate-900/75 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-                                        <div className="border-b border-white/10 px-4 py-4">
-                                            <p className="truncate text-sm font-semibold text-white">
-                                                {displayName}
-                                            </p>
-                                            <p className="mt-1 text-xs capitalize text-white/50">
-                                                {roleLabel}
-                                            </p>
-                                        </div>
-
-                                        <div className="p-2">
-                                            <button
-                                                onClick={() => {
-                                                    setMenuOpen(false);
-                                                    navigate("/profile");
-                                                }}
-                                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/75 transition hover:bg-white/10 hover:text-white"
-                                            >
-                                                <UserCircle size={17} />
-                                                My Profile
-                                            </button>
-
-                                            {isSuperAdmin && (
-                                                <button
-                                                    onClick={() => {
-                                                        setMenuOpen(false);
-                                                        navigate("/settings");
-                                                    }}
-                                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/75 transition hover:bg-white/10 hover:text-white"
-                                                >
-                                                    <Settings size={17} />
-                                                    Settings
-                                                </button>
-                                            )}
-
-                                            <div className="my-2 border-t border-white/10" />
-
-                                            <button
-                                                onClick={handleSignOut}
-                                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
-                                            >
-                                                <LogOut size={17} />
-                                                Sign Out
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -232,6 +200,94 @@ export default function AppLayout() {
                     <Outlet />
                 </main>
             </div>
+
+            {/* ⭐ PORTAL DROPDOWN (Renders outside the header) */}
+            {menuOpen &&
+                createPortal(
+                    <>
+                        <div
+                            className="fixed inset-0 z-[9998]"
+                            onClick={() => setMenuOpen(false)}
+                        />
+                        <div
+                            ref={menuRef}
+                            className="fixed z-[9999] w-64 overflow-hidden rounded-2xl border border-white/[0.14] bg-slate-900/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-fade-in-up"
+                            style={{
+                                top: menuPosition.top,
+                                right: menuPosition.right,
+                            }}
+                        >
+                            <div className="border-b border-white/10 px-4 py-4">
+                                <p className="truncate text-sm font-semibold text-white">
+                                    {displayName}
+                                </p>
+                                <p className="mt-1 text-xs capitalize text-white/50">
+                                    {roleLabel}
+                                </p>
+                            </div>
+
+                            <div className="p-2">
+                                <button
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        navigate("/profile");
+                                    }}
+                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/75 transition hover:bg-white/10 hover:text-white"
+                                >
+                                    <UserCircle size={17} />
+                                    My Profile
+                                </button>
+
+                                {isSuperAdmin && (
+                                    <button
+                                        onClick={() => {
+                                            setMenuOpen(false);
+                                            navigate("/settings");
+                                        }}
+                                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/75 transition hover:bg-white/10 hover:text-white"
+                                    >
+                                        <Settings size={17} />
+                                        Settings
+                                    </button>
+                                )}
+
+                                <div className="my-2 border-t border-white/10" />
+
+                                <button
+                                    onClick={handleSignOut}
+                                    disabled={loggingOut}
+                                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <LogOut size={17} />
+                                        {loggingOut
+                                            ? "Signing out..."
+                                            : "Sign Out"}
+                                    </div>
+                                    {loggingOut && (
+                                        <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </>,
+                    document.body,
+                )}
+
+            {/* ⭐ FULL SCREEN LOGOUT OVERLAY ⭐ */}
+            {loggingOut &&
+                createPortal(
+                    <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#070709]/80 backdrop-blur-md animate-fade-in">
+                        <Loader2 className="h-10 w-10 animate-spin text-violet-500 mb-4" />
+                        <h2 className="text-xl font-bold text-white">
+                            Signing you out...
+                        </h2>
+                        <p className="text-sm text-slate-400 mt-2">
+                            Securing your session safely.
+                        </p>
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }

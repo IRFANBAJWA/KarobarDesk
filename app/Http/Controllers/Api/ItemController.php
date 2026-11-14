@@ -250,6 +250,21 @@ class ItemController extends Controller
     {
         $items = Item::query()
             ->select(['id', 'item_name', 'erpnext_item_code', 'item_group', 'is_active'])
+            // ⭐ Only active items
+            ->where('is_active', true)
+            // ⭐ Ignore Raw Material group
+            ->where(function ($q) {
+                $q->whereNull('item_group')
+                    ->orWhere('item_group', '!=', 'Raw Material');
+            })
+            // Optional: search filter
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->string('search')->toString();
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('item_name', 'like', "%{$search}%")
+                        ->orWhere('erpnext_item_code', 'like', "%{$search}%");
+                });
+            })
             ->orderBy('item_name')
             ->get()
             ->map(fn($item) => [
