@@ -30,7 +30,10 @@ use App\Http\Controllers\Api\PosShiftController;
 use App\Http\Controllers\Api\JournalEntryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\StockAuditController;
-
+use App\Http\Controllers\Api\StockRowController;
+use App\Http\Controllers\Api\ItemRowAssignmentController;
+use App\Http\Controllers\Api\OnlineAreaController;
+use App\Http\Controllers\Api\CompanyItemStatusController;
 
 Route::get('/health', fn() => response()->json(['ok' => true]));
 Route::post('/login', [LoginController::class, 'login']);
@@ -91,15 +94,47 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{user}', [TillAccountController::class, 'update']);
     });
 
-
-
     Route::prefix('stock-audits')->group(function () {
+        Route::get('/', [StockAuditController::class, 'list']);
         Route::get('/today', [StockAuditController::class, 'index']);
-        Route::post('/count', [StockAuditController::class, 'saveCount']);
-        Route::post('batch-count', [StockAuditController::class, 'saveBatchCounts']);
-        Route::get('/{audit}/review', [StockAuditController::class, 'review']);
+        Route::get('/item-history', [StockAuditController::class, 'itemHistory']);
+
+        Route::get('/{audit}', [StockAuditController::class, 'show']);
+        Route::post('/batch-count', [StockAuditController::class, 'saveBatchCounts']);
         Route::post('/{audit}/finalize', [StockAuditController::class, 'finalize']);
+        Route::post('/{audit}/verify', [StockAuditController::class, 'verify']);
     });
+
+    // ─────────────────────────────────────────────────────────────
+    // STOCK ROW PARTITIONING (v5.11)
+    // Reads open to any authenticated user; writes gated in controller.
+    // ─────────────────────────────────────────────────────────────
+    Route::prefix('stock-rows')->group(function () {
+        Route::get('/',            [StockRowController::class, 'index']);
+        Route::post('/',           [StockRowController::class, 'store']);
+        Route::get('/{row}',       [StockRowController::class, 'show']);
+        Route::put('/{row}',       [StockRowController::class, 'update']);
+        Route::delete('/{row}',    [StockRowController::class, 'destroy']);
+        Route::patch('/{row}/assign-owner', [StockRowController::class, 'assignOwner']);
+        Route::get('/{row}/items', [ItemRowAssignmentController::class, 'byRow']);
+    });
+
+    Route::prefix('item-row-assignments')->group(function () {
+        Route::get('/unassigned',      [ItemRowAssignmentController::class, 'unassigned']);
+        Route::post('/',               [ItemRowAssignmentController::class, 'store']);
+        Route::delete('/{assignment}', [ItemRowAssignmentController::class, 'destroy']);
+    });
+
+    Route::prefix('online-area')->group(function () {
+        Route::get('/', [OnlineAreaController::class, 'show']);
+        Route::put('/', [OnlineAreaController::class, 'update']);
+    });
+
+    Route::prefix('company-item-status')->group(function () {
+        Route::get('/',         [CompanyItemStatusController::class, 'index']);
+        Route::patch('/{item}', [CompanyItemStatusController::class, 'toggle']);
+    });
+
     Route::get('/shifts', [ShiftController::class, 'index']);
     Route::get('/shifts/{shift}', [ShiftController::class, 'show']);
 
@@ -116,7 +151,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // SUPER ADMIN ONLY
 // ─────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'super.admin'])->group(function () {
-    // ... (the rest of your Super Admin routes remain the same) ...
     // Sync module
     Route::get('/sync/status',   [SyncController::class, 'status']);
     Route::get('/sync/activity', [SyncController::class, 'activity']);

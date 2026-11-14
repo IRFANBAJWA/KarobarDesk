@@ -15,6 +15,7 @@ class StockAuditItem extends Model
 
     protected $fillable = [
         'stock_audit_id',
+        'stock_row_id',
         'item_id',
         'system_qty',
         'total_counted_qty',
@@ -58,6 +59,11 @@ class StockAuditItem extends Model
     public function stockAudit(): BelongsTo
     {
         return $this->belongsTo(StockAudit::class);
+    }
+
+    public function stockRow(): BelongsTo
+    {
+        return $this->belongsTo(StockRow::class);
     }
 
     public function item(): BelongsTo

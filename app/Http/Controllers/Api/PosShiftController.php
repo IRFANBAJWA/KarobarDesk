@@ -213,8 +213,7 @@ class PosShiftController extends Controller
         $totalExpenses = \App\Models\JournalEntry::where('company_id', $closedShift->company_id)
             ->where('user_id', $closedShift->user_id)
             ->whereDate('posting_date', $closedShift->shift_date)
-            ->sum('total_debit'); // Assuming total_debit is the expense amount
-
+            ->sum('total_debit');
 
         // 4. Generate / Update the Day Closing record for this cashier
         DayClosing::updateOrCreate(
@@ -239,65 +238,6 @@ class PosShiftController extends Controller
                 'total_tax' => $shifts->sum('total_tax'),
                 'total_returns' => $shifts->sum('total_returns'),
                 'total_expenses' => $totalExpenses,
-                'opening_balance' => $shifts->sum('opening_balance'),
-                'closing_balance' => $shifts->sum('closing_balance'),
-                'expected_cash' => $shifts->sum('expected_cash'),
-                'actual_cash' => $shifts->sum('actual_cash'),
-                'cash_difference' => $shifts->sum('cash_difference'),
-                'closing_time' => now(),
-                'status' => 'closed',
-            ]
-        );
-    }
-    private function generateCashierDayClosing(Shift $closedShift)
-    {
-        // 1. Check if this cashier has any other open shifts today
-        $hasOpenShifts = Shift::where('company_id', $closedShift->company_id)
-            ->where('user_id', $closedShift->user_id)
-            ->whereDate('shift_date', $closedShift->shift_date)
-            ->where('shift_status', 'OPEN')
-            ->exists();
-
-        if ($hasOpenShifts) {
-            return; // Cashier is still working, don't close the day yet.
-        }
-
-        // 2. Fetch all of this cashier's closed shifts for today
-        $shifts = Shift::where('company_id', $closedShift->company_id)
-            ->where('user_id', $closedShift->user_id)
-            ->whereDate('shift_date', $closedShift->shift_date)
-            ->where('shift_status', 'CLOSED')
-            ->get();
-
-        // ⭐ 3. Calculate Total Expenses from Journal Entries ⭐
-        $totalExpenses = \App\Models\JournalEntry::where('company_id', $closedShift->company_id)
-            ->where('user_id', $closedShift->user_id)
-            ->whereDate('posting_date', $closedShift->shift_date)
-            ->sum('total_debit'); // Assuming total_debit is the expense amount
-
-        // 4. Generate / Update the Day Closing record for this cashier
-        \App\Models\DayClosing::updateOrCreate(
-            [
-                'company_id' => $closedShift->company_id,
-                'user_id' => $closedShift->user_id,
-                'business_date' => $closedShift->shift_date,
-            ],
-            [
-                'till_operation_id' => $closedShift->till_operation_id,
-                'closing_user_id' => $closedShift->user_id,
-                'shift_count' => $shifts->count(),
-                'total_transactions' => $shifts->sum('total_transactions'),
-                'sale_count' => $shifts->sum('sale_count'),
-                'return_count' => $shifts->sum('return_count'),
-                'void_count' => $shifts->sum('void_count'),
-                'total_sales' => $shifts->sum('total_sales'),
-                'cash_sales' => $shifts->sum('cash_sales'),
-                'card_sales' => $shifts->sum('card_sales'),
-                'other_sales' => $shifts->sum('other_sales'),
-                'total_discount' => $shifts->sum('total_discount'),
-                'total_tax' => $shifts->sum('total_tax'),
-                'total_returns' => $shifts->sum('total_returns'),
-                'total_expenses' => $totalExpenses, // ⭐ Use the calculated value
                 'opening_balance' => $shifts->sum('opening_balance'),
                 'closing_balance' => $shifts->sum('closing_balance'),
                 'expected_cash' => $shifts->sum('expected_cash'),
